@@ -3,14 +3,14 @@ import { mulberry32 } from './rng';
 
 // Every texture in the game is painted onto a canvas here at startup.
 
-function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
+export function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
   return [c, c.getContext('2d')!];
 }
 
-function toTexture(c: HTMLCanvasElement, repeat = true): THREE.CanvasTexture {
+export function toTexture(c: HTMLCanvasElement, repeat = true): THREE.CanvasTexture {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   if (repeat) {
@@ -21,7 +21,7 @@ function toTexture(c: HTMLCanvasElement, repeat = true): THREE.CanvasTexture {
   return tex;
 }
 
-function speckle(ctx: CanvasRenderingContext2D, w: number, h: number, rand: () => number, count: number, alpha: number) {
+export function speckle(ctx: CanvasRenderingContext2D, w: number, h: number, rand: () => number, count: number, alpha: number) {
   for (let i = 0; i < count; i++) {
     const v = Math.floor(rand() * 255);
     ctx.fillStyle = `rgba(${v},${v},${v},${alpha})`;

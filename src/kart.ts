@@ -346,7 +346,8 @@ export class Kart {
     m.rotation.y = this.heading + this.driftYaw + this.spinAngle;
     // Lean into turns, nose up in the air.
     this.body.rotation.z = -this.steerVisual * 0.06 * clamp(this.speed / 20, 0, 1) - (this.drifting ? this.driftDir * 0.08 : 0);
-    this.body.rotation.x = this.grounded ? 0 : clamp(-this.vy * 0.03, -0.3, 0.3);
+    // Grounded, pitch with the slope (vy is the climb rate); airborne, nose up then down.
+    this.body.rotation.x = this.grounded ? -Math.atan2(this.vy, Math.max(6, Math.abs(this.speed))) : clamp(-this.vy * 0.03, -0.3, 0.3);
     const bob = this.grounded ? Math.sin(time * 30 + this.id) * 0.02 * clamp(this.speed / 10, 0, 1) : 0;
     this.body.position.y = bob;
     for (const w of this.wheels) w.rotation.x += this.speed * 0.03;
