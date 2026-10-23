@@ -49,7 +49,7 @@ function makePeasant(rand: () => number): WalkerModel {
     arm.rotation.z = x > 0 ? -0.25 : 0.25;
     root.add(arm);
   }
-  return { root, legs, speed: 1.8 + rand() * 1.4, sound: 'bump', color: 0xd8c060 };
+  return { root, legs, speed: 1.8 + rand() * 1.4, sound: 'bump', cry: 'ouch', color: 0xd8c060 };
 }
 
 function makePig(): WalkerModel {
@@ -365,6 +365,7 @@ export const MEDIEVAL: CourseDef = {
     wallHeight: 1.2,
   },
   music: { seed: 1234, tempo: 0.155 },
+  ambience: 'city',
   decorate(track, g, rand) {
     // Ground: a big cobbled square, plus grass outside the city walls.
     const grass = new THREE.Mesh(

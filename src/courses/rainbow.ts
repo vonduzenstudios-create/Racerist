@@ -358,5 +358,6 @@ export const RAINBOW: CourseDef = {
     roadGlow: 0.45,
   },
   music: { seed: 2077, tempo: 0.14 },
+  ambience: 'rainbow',
   decorate: decorateRainbow,
 };

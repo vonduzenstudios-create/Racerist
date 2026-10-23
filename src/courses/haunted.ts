@@ -393,7 +393,7 @@ export function makeGhost(rand: () => number): WalkerModel {
     body.position.y = 0.5 + Math.sin(t * 2.5 + root.id) * 0.25;
     body.rotation.y = Math.sin(t * 2 + root.id) * 0.15;
   });
-  return { root, legs, speed: 2.2 + rand() * 1.6, sound: 'boo', color: 0xe8f0ff };
+  return { root, legs, speed: 2.2 + rand() * 1.6, sound: 'ghost', color: 0xe8f0ff };
 }
 
 // ---------- scenery ----------
@@ -983,5 +983,7 @@ export const HAUNTED: CourseDef = {
     wallHeight: 1.0,
   },
   music: { seed: 6661, tempo: 0.19 },
+  ambience: 'haunted',
+  ambienceAt: (x, z) => (insideManor(x, z) ? 'hauntedInterior' : 'haunted'),
   decorate: decorateHaunted,
 };

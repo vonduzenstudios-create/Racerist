@@ -68,6 +68,7 @@ export class UI {
   private centerEl = el('div', 'center');
   private wrongEl = el('div', 'wrongway hidden', 'WRONG WAY!');
   private toastEl = el('div', 'toast');
+  private flashEl = el('div', 'flash');
   private minimap = el('canvas', 'minimap');
   private mapBase: HTMLCanvasElement | null = null;
   private mapXform = { x: 0, z: 0, scale: 1 };
@@ -93,7 +94,7 @@ export class UI {
     slots.append(itemWrap, powerWrap);
     this.minimap.width = 360;
     this.minimap.height = 360;
-    this.hud.append(tl, slots, this.placeEl, this.minimap, this.centerEl, this.wrongEl, this.toastEl);
+    this.hud.append(tl, slots, this.placeEl, this.minimap, this.centerEl, this.wrongEl, this.toastEl, this.flashEl);
 
     root.append(this.title, this.select, this.hud, this.panel, this.muteEl);
   }
@@ -150,7 +151,7 @@ export class UI {
     const help = el(
       'div',
       'help',
-      'Arrows/WASD drive · Space hop &amp; drift (hold, steer) · J item · K power · R look back · Esc pause<br>Gamepad: A gas · X brake · RB drift · LB item · Y power · ↓ look back · Press gas as the "2" fades for a start boost',
+      'Arrows/WASD drive · Space/Shift hop &amp; drift (hold, steer) · J/X/Ctrl item · K power · R look back · Esc pause<br>Gamepad: A gas · B or X item · bumpers/triggers hop &amp; drift · Y power · stick back brake · stick click look back · Press gas as the "2" fades for a start boost',
     );
     this.select.append(cards, courseRow, diff, go, help);
   }
@@ -247,6 +248,13 @@ export class UI {
     void this.centerEl.offsetWidth;
     this.centerEl.classList.add('pop');
     this.centerTimer = seconds;
+  }
+
+  /** Brief white-out, for the Thunder Scroll. */
+  flash() {
+    this.flashEl.classList.remove('on');
+    void this.flashEl.offsetWidth;
+    this.flashEl.classList.add('on');
   }
 
   toast(text: string, seconds = 2) {

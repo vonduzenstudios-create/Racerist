@@ -15,6 +15,7 @@ interface Walker {
   pause: number;
   knocked: number;
   sound: string;
+  cry?: string;
   color: number;
 }
 
@@ -35,7 +36,7 @@ export class Hazards {
     track.crossings.forEach((s, ci) => {
       const count = 3 + (ci % 2);
       for (let i = 0; i < count; i++) {
-        const { root, legs, speed, sound, color } = make(rand, ci, i, count);
+        const { root, legs, speed, sound, cry, color } = make(rand, ci, i, count);
         scene.add(root);
         this.walkers.push({
           root,
@@ -47,6 +48,7 @@ export class Hazards {
           pause: rand() * 2,
           knocked: 0,
           sound,
+          cry,
           color,
         });
       }
@@ -79,13 +81,17 @@ export class Hazards {
 
       if (w.knocked > 0) continue;
       for (const k of karts) {
+        if (k.activePower === 'phantom') continue;
         const d = this.tmp.copy(k.pos).sub(w.root.position);
         d.y = 0;
         if (d.lengthSq() < 2.0 * 2.0 && k.pos.y - w.root.position.y < 1.5) {
           const fell = k.hit();
           w.knocked = 2.5;
-          this.particles.burst(w.root.position.clone().setY(2.5), w.color, 16, 6, { life: 0.7, size: 0.5, gravity: 10, additive: false });
-          if (fell || k.activePower === 'rampage') this.sfx(w.sound, k.pos);
+          this.particles.burst(w.root.position.clone().setY(w.root.position.y + 2.5), w.color, 16, 6, { life: 0.7, size: 0.5, gravity: 10, additive: false });
+          if (fell || k.activePower === 'rampage') {
+            this.sfx(w.sound, k.pos);
+            if (w.cry) this.sfx(w.cry, w.root.position);
+          }
           break;
         }
       }
