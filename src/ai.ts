@@ -88,6 +88,21 @@ export class AiDriver {
           case 'fireball':
             use = gap(ahead) < 140 || this.itemHeldFor > 5;
             break;
+          case 'cannonball':
+            use = (gap(ahead) < 45 && Math.abs((ahead?.lateral ?? 99) - k.lateral) < 4) || this.itemHeldFor > 6;
+            break;
+          case 'wraith':
+            use = karts.some((o) => o.place < k.place && o.item) || this.itemHeldFor > 4;
+            break;
+          case 'chalice':
+            use = Math.abs(bend) < 0.4 && k.boostTime <= 0.1;
+            break;
+          case 'seeker':
+          case 'thunder':
+          case 'heart':
+          case 'feather':
+            use = true;
+            break;
         }
         if (use) {
           inp.item = true;

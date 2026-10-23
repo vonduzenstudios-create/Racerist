@@ -4,7 +4,18 @@ import type { KartInput } from './input';
 import { clamp, lerp, wrapAngle } from './rng';
 import { ROAD_HALF, Track, WALL_HALF } from './track';
 
-export type ItemId = 'potion' | 'cabbage' | 'fireball' | 'ward';
+export type ItemId =
+  | 'potion'
+  | 'cabbage'
+  | 'fireball'
+  | 'ward'
+  | 'cannonball'
+  | 'wraith'
+  | 'chalice'
+  | 'seeker'
+  | 'thunder'
+  | 'heart'
+  | 'feather';
 
 export type KartEvent = 'hop' | 'tier1' | 'tier2' | 'boost' | 'bump' | 'spin' | 'blocked' | 'land' | 'lap' | 'finish';
 
@@ -64,6 +75,17 @@ export class Kart {
 
   item: ItemId | null = null;
   rouletteTime = 0;
+  /** Seconds left on a multi-use item (the Golden Chalice). */
+  itemTimer = 0;
+  /** Wraith Cloak: see-through and untouchable. */
+  ghostTime = 0;
+  /** Dragon Heart: invincible, faster, and hits whoever it touches. */
+  starTime = 0;
+  /** Phoenix Feather: flies itself along the road. */
+  featherTime = 0;
+  /** Thunder Scroll: shrunk and slowed. */
+  shrinkTime = 0;
+  private shrinkScale = 1;
   powerCharge = 0.35;
   powerActive = 0;
   /** The power that is currently running, if any. */
@@ -169,6 +191,7 @@ export class Kart {
   hit(): boolean {
     if (this.spinTime > 0) return false;
     if (this.activePower === 'rampage' || this.activePower === 'phantom') return false;
+    if (this.invulnerable) return false;
     if (this.shieldTime > 0) {
       this.shieldTime = 0;
       this.events.push('blocked');
@@ -185,9 +208,14 @@ export class Kart {
     return true;
   }
 
+  /** Item effects that make the kart immune to hits. */
+  get invulnerable(): boolean {
+    return this.ghostTime > 0 || this.starTime > 0 || this.featherTime > 0;
+  }
+
   get maxSpeed(): number {
     let max = this.topSpeed * this.speedScale;
-    const roughImmune = this.boostTime > 0 || this.activePower === 'overclock' || this.activePower === 'rampage';
+    const roughImmune = this.boostTime > 0 || this.starTime > 0 || this.featherTime > 0 || this.activePower === 'overclock' || this.activePower === 'rampage';
     if (this.offroad && !roughImmune) max *= 0.55;
     if (this.inMud && this.activePower !== 'rampage' && this.activePower !== 'phantom') max *= 0.45;
     if (this.chillTime > 0) max *= 0.5;
@@ -195,6 +223,8 @@ export class Kart {
     if (this.activePower === 'rampage') max *= 1.1;
     if (this.activePower === 'overclock') max *= 1.22;
     if (this.boostTime > 0) max *= 1.32;
+    if (this.starTime > 0) max *= 1.15;
+    if (this.shrinkTime > 0) max *= 0.7;
     return max;
   }
 
@@ -205,6 +235,10 @@ export class Kart {
     this.boostTime = Math.max(0, this.boostTime - dt);
     this.shieldTime = Math.max(0, this.shieldTime - dt);
     this.chillTime = Math.max(0, this.chillTime - dt);
+    this.ghostTime = Math.max(0, this.ghostTime - dt);
+    this.starTime = Math.max(0, this.starTime - dt);
+    this.featherTime = Math.max(0, this.featherTime - dt);
+    this.shrinkTime = Math.max(0, this.shrinkTime - dt);
     if (this.powerActive > 0) {
       this.powerActive -= dt;
       if (this.powerActive <= 0) this.activePower = null;
@@ -396,8 +430,10 @@ export class Kart {
     this.auraMesh.visible = this.activePower === 'rampage';
     if (this.auraMesh.visible) this.auraMesh.scale.setScalar(1 + Math.sin(time * 20) * 0.06);
     m.visible = !(this.activePower === 'blink' && this.powerActive > 0.15);
+    this.shrinkScale = lerp(this.shrinkScale, this.shrinkTime > 0 ? 0.55 : 1, 0.15);
+    this.body.scale.setScalar(this.shrinkScale);
     this.frostMesh.visible = this.chillTime > 0;
-    const ghostly = this.activePower === 'phantom';
+    const ghostly = this.activePower === 'phantom' || this.ghostTime > 0;
     if (ghostly !== this.ghostly) {
       this.ghostly = ghostly;
       for (const mat of this.ghostMats) {

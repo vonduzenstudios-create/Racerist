@@ -330,6 +330,19 @@ export const SOUNDS: Record<string, SoundFn> = {
     }
   },
   bigExplosion: (v) => explosion(v, 1.8),
+  cannon: (v) => {
+    v.tone(85, 0.45, 'sine', 0.6, 0, 35);
+    v.noise(0.5, 0.5, 'lowpass', 1400, 0, 150);
+  },
+  ricochet: (v) => {
+    v.tone(1900, 0.09, 'square', 0.12, 0, 1300);
+    v.tone(2600, 0.12, 'triangle', 0.1, 0.02);
+  },
+  chalice: (v) => {
+    v.tone(1047, 0.25, 'sine', 0.2);
+    v.tone(1568, 0.3, 'sine', 0.14, 0.03);
+    v.noise(0.4, 0.25, 'bandpass', 800, 0, 3200);
+  },
   fuse: (v) => v.noise(1.2, 0.12, 'highpass', 5000, 0, 3000),
   star: (v) => v.arp([784, 988, 1175, 1568, 1175, 1568, 1976, 2349], 0.07, 0.12, 'square', 0.1),
   bullet: (v) => {
