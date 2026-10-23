@@ -355,7 +355,7 @@ export const RAINBOW: CourseDef = {
     verge: starGlassTexture,
     wall: () => new THREE.MeshBasicMaterial({ color: 0x9ff3ff, transparent: true, opacity: 0.6 }),
     wallHeight: 0.9,
-    roadGlow: 0.75,
+    roadGlow: 0.45,
   },
   music: { seed: 2077, tempo: 0.14 },
   decorate: decorateRainbow,
