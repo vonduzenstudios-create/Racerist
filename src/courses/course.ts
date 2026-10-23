@@ -44,6 +44,8 @@ export interface CourseSurfaces {
   /** Material for the low barrier along both sides, and its height. */
   wall: () => THREE.Material;
   wallHeight: number;
+  /** How strongly the road lights itself (0 or unset: not at all), for night courses. */
+  roadGlow?: number;
 }
 
 export interface CourseDef {
@@ -53,6 +55,13 @@ export interface CourseDef {
   /** Spline control points as [x, z] or [x, z, elevation]. Driven anticlockwise from the first. */
   controlPoints: ([number, number] | [number, number, number])[];
   ramps: RampDef[];
+  /**
+   * Stretches with no walls or verges, as [from, to] fractions of the lap. Leave the road
+   * there and you fall into the void and get put back on the track.
+   */
+  openEdges?: [number, number][];
+  /** Dash panels in the middle of the road, as fractions of the lap. */
+  boostPads?: number[];
   /** Rows of item boxes, as fractions of the lap. */
   itemRows: number[];
   /** Hazard crossings, as fractions of the lap. Leave empty for none. */
@@ -64,6 +73,8 @@ export interface CourseDef {
   music: { seed: number; tempo: number };
   /** Background sound bed, an id from AMBIENCES in sfx.ts. */
   ambience: string;
+  /** Optional per-position override, such as a quieter bed indoors. */
+  ambienceAt?: (x: number, z: number) => string;
   /** Builds everything off the road: ground, start gate, buildings, trees, landmarks. */
   decorate: (track: Track, group: THREE.Group, rand: () => number) => void;
 }

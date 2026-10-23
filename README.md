@@ -10,6 +10,8 @@ A browser kart racer tech demo across the fantasy realms. Every model, texture, 
   - **Castle Town:** a half-timbered medieval town, under a castle gatehouse, over a wooden jump ramp, past market stalls, with the castle on the hill and the city walls on the horizon.
   - **Whispering Woods:** a dirt road over rolling hills through pine, oak and birch forest, across a plank bridge over a stream, through a glade of giant glowing toadstools, past an ancient tree, with two log jumps.
   - **Sunset Shore:** a sandy loop round a palm-covered island between the dunes and the surf, past parasols, beach huts and sandcastles, with a lighthouse and a tall ship offshore and two jumps.
+  - **Gloomhollow Manor:** a moonlit graveyard lap that runs in the front door of a haunted manor, up the grand staircase, along the gallery, off a jump down the back stairs and out the back door.
+  - **Prism Skyway:** a glowing rainbow road across the night sky, climbing and diving between floating crystal islands, with dash panels and long stretches with no rails. Drive off the edge and you fall, then get put back where you went over.
 - **Eight racers** (all eight start every race), each with different stats and a special power that charges over time:
   - **Dark Orc:** heavy and fast. *Rampage* makes it faster, immune to hazards, and spins out anyone it rams.
   - **Light Elf:** light, with the best handling. *Blink* teleports it 35 metres up the road.
@@ -21,7 +23,7 @@ A browser kart racer tech demo across the fantasy realms. Every model, texture, 
   - **Pixie:** tiny, with the best acceleration and handling. *Hex Swap* trades places with the racer just ahead (within 90 m).
 - **Items** from the ? boxes, weighted by your place: Haste Potion (boost), Rotten Cabbage (dropped trap), Fireball (homes in on the racer ahead), Magic Ward (blocks one hit).
 - **Driving:** hop-drift with two boost tiers (blue then orange sparks), a start boost, jumps, wall glancing, and slow cobbled verges.
-- **Hazards:** each course sends something across the road: peasants and pigs in Castle Town, deer and boar in the woods, crabs and a turtle on the shore.
+- **Hazards:** each course sends something across the road: peasants and pigs in Castle Town, deer and boar in the woods, crabs and a turtle on the shore, ghosts at the manor.
 - **AI rivals** with three difficulties (Squire, Knight, King) that take racing lines, drift, dodge traps, and use items and powers.
 - **Audio:** Web Audio synthesis for the engine, effects, and a seeded saltarello-style tune (drone, lute, recorder and tabor) that speeds up on the final lap.
 

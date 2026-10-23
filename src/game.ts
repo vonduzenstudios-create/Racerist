@@ -355,6 +355,8 @@ export class Game {
       const ratio = Math.max(0, this.player.speed) / this.player.topSpeed;
       this.audio.updateEngine(this.paused ? 0 : ratio, this.paused ? 0 : input.throttle);
       this.updateLoops(this.player, ratio);
+      const { course } = this.track;
+      if (course.ambienceAt && this.state !== 'finished') this.audio.setAmbience(course.ambienceAt(this.player.pos.x, this.player.pos.z));
     }
     this.renderer.render(this.scene, this.camera);
   }
@@ -699,6 +701,11 @@ export class Game {
               break;
             case 'blocked':
               this.audio.shieldBlock();
+              break;
+            case 'fall':
+              this.audio.play('fall');
+              setTimeout(() => this.audio.play('respawn'), 900);
+              this.ui.toast('Back on the road!', 1.2);
               break;
             case 'land':
               this.audio.bump();

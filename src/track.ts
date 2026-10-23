@@ -8,6 +8,11 @@ import { checkerTexture } from './textures';
 export const ROAD_HALF = 10;
 /** Karts are pushed back by the low wall at this lateral offset. */
 export const WALL_HALF = 15;
+/** Off the road on an open edge, the "ground" is this far below the road: far enough to never land. */
+export const VOID_DEPTH = 60;
+/** Dash panels span this much road either side of the centreline, and this far along it. */
+const PAD_HALF = 3.5;
+const PAD_LENGTH = 6;
 
 const SAMPLE_COUNT = 1200;
 
@@ -46,6 +51,9 @@ export class Track {
   readonly ramps: Ramp[];
   readonly crossings: number[];
   readonly itemRows: number[];
+  readonly boostPads: number[];
+  /** Per sample: true where the course has no wall and you can drive off the edge. */
+  private readonly open: boolean[];
 
   constructor(readonly course: CourseDef) {
     const curve = new THREE.CatmullRomCurve3(
@@ -67,11 +75,17 @@ export class Track {
     this.ramps = course.ramps.map((r) => ({ start: r.at * this.length, length: r.length, height: r.height }));
     this.crossings = course.crossings.map((f) => f * this.length);
     this.itemRows = course.itemRows.map((f) => f * this.length);
+    this.boostPads = (course.boostPads ?? []).map((f) => f * this.length);
+    this.open = this.samples.map((smp) => {
+      const f = smp.s / this.length;
+      return (course.openEdges ?? []).some(([a, b]) => (a <= b ? f >= a && f < b : f >= a || f < b));
+    });
 
     this.buildRoad();
     this.buildWalls();
     this.buildRamps();
     this.buildStartLine();
+    this.buildBoostPads();
     course.decorate(this, this.group, mulberry32(2024));
   }
 
@@ -153,9 +167,25 @@ export class Track {
     return this.baseHeightAt(s) + this.rampAt(s);
   }
 
-  /** Ground height at a lateral offset: ramps only span the road, the verges stay at the base. */
+  /**
+   * Ground height at a lateral offset: ramps only span the road, the verges stay at the base,
+   * and past the road on an open edge there is nothing until far below.
+   */
   groundAt(s: number, lateral: number): number {
-    return Math.abs(lateral) < ROAD_HALF + 0.5 ? this.heightAt(s) : this.baseHeightAt(s);
+    if (Math.abs(lateral) < ROAD_HALF + 0.5) return this.heightAt(s);
+    return this.isOpen(s) ? this.baseHeightAt(s) - VOID_DEPTH : this.baseHeightAt(s);
+  }
+
+  /** True where there is no wall at s, so karts can leave the road and fall. */
+  isOpen(s: number): boolean {
+    return this.open[Math.round(this.wrapS(s) / this.spacing) % SAMPLE_COUNT];
+  }
+
+  /** True on a dash panel. */
+  onBoostPad(s: number, lateral: number): boolean {
+    if (Math.abs(lateral) > PAD_HALF) return false;
+    const ws = this.wrapS(s);
+    return this.boostPads.some((p) => ws >= p && ws < p + PAD_LENGTH);
   }
 
   /** How sharply the track turns over the next `dist` metres, in radians (signed, + is right). */
@@ -183,7 +213,7 @@ export class Track {
   }
 
   /** A strip following the course between two lateral offsets, `y` above the road bed. */
-  ribbon(inner: number, outer: number, y: number, vScale: number, withRamps = false): THREE.BufferGeometry {
+  ribbon(inner: number, outer: number, y: number, vScale: number, withRamps = false, skip?: (i: number) => boolean): THREE.BufferGeometry {
     const positions: number[] = [];
     const uvs: number[] = [];
     const indices: number[] = [];
@@ -195,7 +225,7 @@ export class Track {
         positions.push(smp.pos.x + smp.right.x * lat, y + h, smp.pos.z + smp.right.z * lat);
         uvs.push(u, v);
       }
-      if (i < SAMPLE_COUNT) {
+      if (i < SAMPLE_COUNT && !skip?.(i)) {
         const a = i * 2;
         indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
       }
@@ -210,15 +240,19 @@ export class Track {
 
   private buildRoad() {
     const { surfaces } = this.course;
+    const roadTex = surfaces.road();
     const road = new THREE.Mesh(
       this.ribbon(-ROAD_HALF, ROAD_HALF, 0.02, 20, true),
-      new THREE.MeshLambertMaterial({ map: surfaces.road() }),
+      new THREE.MeshLambertMaterial({
+        map: roadTex,
+        ...(surfaces.roadGlow ? { emissive: 0xffffff, emissiveMap: roadTex, emissiveIntensity: surfaces.roadGlow } : {}),
+      }),
     );
     road.receiveShadow = true;
     this.group.add(road);
     const vergeMat = new THREE.MeshLambertMaterial({ map: surfaces.verge() });
     for (const [a, b] of [[ROAD_HALF, WALL_HALF + 1], [-WALL_HALF - 1, -ROAD_HALF]]) {
-      const m = new THREE.Mesh(this.ribbon(a, b, 0.01, 6), vergeMat);
+      const m = new THREE.Mesh(this.ribbon(a, b, 0.01, 6, false, (i) => this.open[i] || this.open[(i + 1) % SAMPLE_COUNT]), vergeMat);
       m.receiveShadow = true;
       this.group.add(m);
     }
@@ -232,6 +266,7 @@ export class Track {
     for (let i = 0; i < SAMPLE_COUNT; i += step) {
       const a = this.samples[i];
       const b = this.samples[(i + step) % SAMPLE_COUNT];
+      if (this.open[i] || this.open[(i + step) % SAMPLE_COUNT]) continue;
       for (const side of [-1, 1]) {
         const lat = (WALL_HALF + 1.4) * side;
         const p0 = a.pos.clone().addScaledVector(a.right, lat);
@@ -244,6 +279,7 @@ export class Track {
         geos.push(box);
       }
     }
+    if (!geos.length) return;
     const mesh = new THREE.Mesh(mergeGeometries(geos), this.course.surfaces.wall());
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -287,5 +323,36 @@ export class Track {
     line.position.copy(smp.pos).setY(smp.pos.y + 0.04);
     line.rotation.y = Math.atan2(smp.tan.x, smp.tan.z);
     this.group.add(line);
+  }
+
+  /** Glowing chevrons on each dash panel. */
+  private buildBoostPads() {
+    if (!this.boostPads.length) return;
+    const geos: THREE.BufferGeometry[] = [];
+    const chevron = new THREE.Shape();
+    chevron.moveTo(-PAD_HALF, 0);
+    chevron.lineTo(0, 1.4);
+    chevron.lineTo(PAD_HALF, 0);
+    chevron.lineTo(PAD_HALF, 0.9);
+    chevron.lineTo(0, 2.3);
+    chevron.lineTo(-PAD_HALF, 0.9);
+    chevron.closePath();
+    const base = new THREE.ShapeGeometry(chevron).rotateX(-Math.PI / 2);
+    // ShapeGeometry's Y became -Z; flip so the point faces forward along +Z.
+    base.scale(1, 1, -1);
+    for (const p of this.boostPads) {
+      for (let k = 0; k < 3; k++) {
+        const s = p + k * (PAD_LENGTH / 3);
+        const smp = this.sampleAt(s);
+        const g = base.clone();
+        g.rotateY(Math.atan2(smp.tan.x, smp.tan.z));
+        g.translate(smp.pos.x, this.heightAt(s) + 0.06, smp.pos.z);
+        geos.push(g);
+      }
+    }
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffe14a, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(mergeGeometries(geos), mat);
+    mesh.onBeforeRender = () => mat.color.setHSL(0.13 - 0.05 * Math.abs(Math.sin(performance.now() / 150)), 1, 0.6);
+    this.group.add(mesh);
   }
 }

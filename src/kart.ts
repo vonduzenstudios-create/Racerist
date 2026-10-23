@@ -17,7 +17,7 @@ export type ItemId =
   | 'heart'
   | 'feather';
 
-export type KartEvent = 'hop' | 'tier1' | 'tier2' | 'boost' | 'bump' | 'spin' | 'blocked' | 'land' | 'lap' | 'finish';
+export type KartEvent = 'hop' | 'tier1' | 'tier2' | 'boost' | 'bump' | 'spin' | 'blocked' | 'land' | 'lap' | 'finish' | 'fall';
 
 const GRAVITY = 28;
 export const TOTAL_LAPS = 3;
@@ -72,6 +72,10 @@ export class Kart {
   offroad = false;
   airTime = 0;
   groundY = 0;
+  /** Last place the kart was safely on the road, where it is put back after a fall. */
+  private safeS = 0;
+  /** Seconds left of the post-fall pause, while the kart is lowered back onto the road. */
+  respawnTime = 0;
 
   item: ItemId | null = null;
   rouletteTime = 0;
@@ -230,7 +234,8 @@ export class Kart {
 
   step(dt: number, input: KartInput, track: Track, canDrive: boolean) {
     this.lastInput = input;
-    if (!canDrive) input = { ...input, throttle: 0, brake: 0, steer: 0, drift: false };
+    this.respawnTime = Math.max(0, this.respawnTime - dt);
+    if (!canDrive || this.respawnTime > 0) input = { ...input, throttle: 0, brake: 0, steer: 0, drift: false };
 
     this.boostTime = Math.max(0, this.boostTime - dt);
     this.shieldTime = Math.max(0, this.shieldTime - dt);
@@ -330,7 +335,7 @@ export class Kart {
     this.lateral = proj.lateral;
     this.offroad = Math.abs(this.lateral) > ROAD_HALF + 0.6;
     const limit = WALL_HALF - 1;
-    if (Math.abs(this.lateral) > limit) {
+    if (Math.abs(this.lateral) > limit && !track.isOpen(this.s)) {
       const smp = track.samples[proj.index];
       const over = this.lateral - Math.sign(this.lateral) * limit;
       this.pos.addScaledVector(smp.right, -over);
@@ -347,6 +352,8 @@ export class Kart {
 
     // Vertical: follow the road, launch off the ramp lip, fall back down.
     const ground = track.groundAt(this.s, this.lateral);
+    if (this.grounded && (Math.abs(this.lateral) < ROAD_HALF || !track.isOpen(this.s))) this.safeS = this.s;
+    if (this.grounded && track.onBoostPad(this.s, this.lateral) && this.boostTime < 0.5) this.boost(0.9);
     this.groundY = ground;
     if (this.grounded) {
       if (ground < this.pos.y - 0.4) {
@@ -368,6 +375,34 @@ export class Kart {
         this.airTime = 0;
       }
     }
+    if (this.pos.y < track.baseHeightAt(this.s) - 22) this.respawn(track);
+  }
+
+  /** Fell off an open edge: drop back onto the centreline a little before where it went over. */
+  private respawn(track: Track) {
+    const target = track.wrapS(this.safeS - 4);
+    // Going back over the start line takes the lap back with it.
+    if (target - this.s > track.length / 2) this.lap -= 1;
+    else if (this.s - target > track.length / 2) this.crossLine(1);
+    track.pointAt(target, 0, this.pos);
+    this.pos.y += 5;
+    const smp = track.sampleAt(target);
+    this.heading = Math.atan2(smp.tan.x, smp.tan.z);
+    const proj = track.project(this.pos);
+    this.trackIndex = proj.index;
+    this.s = proj.s;
+    this.lateral = proj.lateral;
+    this.speed = 0;
+    this.vy = 0;
+    this.grounded = false;
+    this.airTime = 0;
+    this.drifting = false;
+    this.driftCharge = 0;
+    this.driftTier = 0;
+    this.boostTime = 0;
+    this.spinTime = 0;
+    this.respawnTime = 1.1;
+    this.events.push('fall');
   }
 
   /** Jumps the kart forward along the track (the Light Elf's Blink). */
@@ -430,7 +465,7 @@ export class Kart {
     this.shieldMesh.rotation.y = time * 2;
     this.auraMesh.visible = this.activePower === 'rampage';
     if (this.auraMesh.visible) this.auraMesh.scale.setScalar(1 + Math.sin(time * 20) * 0.06);
-    m.visible = !(this.activePower === 'blink' && this.powerActive > 0.15);
+    m.visible = !(this.activePower === 'blink' && this.powerActive > 0.15) && !(this.respawnTime > 0 && Math.sin(time * 40) > 0);
     this.shrinkScale = lerp(this.shrinkScale, this.shrinkTime > 0 ? 0.55 : 1, 0.15);
     this.body.scale.setScalar(this.shrinkScale);
     this.frostMesh.visible = this.chillTime > 0;
