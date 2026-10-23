@@ -163,6 +163,54 @@ export class AudioEngine {
     this.tone(520, 0.12, 'sawtooth', 0.15, 0, 300);
     this.tone(480, 0.14, 'sawtooth', 0.15, 0.14, 260);
   }
+  cannon() {
+    this.tone(85, 0.45, 'sine', 0.6, 0, 35);
+    this.noise(0.5, 0.5, 'lowpass', 1400, 0, 150);
+  }
+  ricochet() {
+    this.tone(1900, 0.09, 'square', 0.12, 0, 1300);
+    this.tone(2600, 0.12, 'triangle', 0.1, 0.02);
+  }
+  wraith() {
+    // A hollow, wavering moan.
+    this.tone(330, 0.7, 'sine', 0.22, 0, 220);
+    this.tone(349, 0.7, 'sine', 0.18, 0.05, 233);
+    this.noise(0.6, 0.12, 'bandpass', 900, 0, 300);
+  }
+  steal() {
+    [988, 784, 1175, 1568].forEach((f, i) => this.tone(f, 0.1, 'triangle', 0.18, i * 0.06));
+  }
+  chalice() {
+    this.tone(1047, 0.25, 'sine', 0.2);
+    this.tone(1568, 0.3, 'sine', 0.14, 0.03);
+    this.noise(0.4, 0.25, 'bandpass', 800, 0, 3200);
+  }
+  seekerLaunch() {
+    this.tone(260, 0.6, 'triangle', 0.25, 0, 1400);
+    this.tone(390, 0.6, 'sine', 0.15, 0.05, 2000);
+    this.noise(0.5, 0.2, 'highpass', 2500);
+  }
+  seekerBlast() {
+    this.noise(1.1, 0.7, 'lowpass', 3500, 0, 90);
+    this.tone(70, 0.9, 'sawtooth', 0.3, 0, 30);
+    [1568, 1319, 1047].forEach((f, i) => this.tone(f, 0.25, 'sine', 0.12, 0.05 + i * 0.07));
+  }
+  thunder() {
+    this.noise(0.12, 0.8, 'highpass', 2500);
+    this.noise(1.6, 0.6, 'lowpass', 900, 0.06, 60);
+    this.tone(55, 1.2, 'sawtooth', 0.3, 0.05, 30);
+    // Everyone shrinking: a quick falling whistle.
+    this.tone(1200, 0.5, 'square', 0.08, 0.25, 200);
+  }
+  dragonHeart() {
+    [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => this.tone(f, 0.14, 'square', 0.13, i * 0.05));
+    this.tone(80, 0.8, 'sawtooth', 0.25, 0, 160);
+  }
+  phoenix() {
+    this.noise(0.9, 0.4, 'bandpass', 500, 0, 4000);
+    this.tone(1500, 0.18, 'triangle', 0.2, 0.1, 2300);
+    this.tone(2100, 0.3, 'triangle', 0.16, 0.28, 1500);
+  }
   menuMove() {
     this.tone(700, 0.06, 'square', 0.1);
   }

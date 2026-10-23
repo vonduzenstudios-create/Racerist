@@ -88,6 +88,15 @@ export class Game {
     this.particles = new Particles(this.scene);
     const sfx = (name: string, pos: THREE.Vector3) => this.positionalSfx(name, pos);
     this.items = new ItemSystem(this.scene, this.track, this.particles, sfx);
+    this.items.hooks = {
+      toast: (k, text) => {
+        if (k.isPlayer) this.ui.toast(text, 2);
+      },
+      flash: () => {
+        this.ui.flash();
+        this.shake = 0.5;
+      },
+    };
     this.hazards = new Hazards(this.scene, this.track, this.particles, sfx);
 
     this.ui = new UI(root);
@@ -464,6 +473,7 @@ export class Game {
         const d2 = dx * dx + dz * dz;
         const r = 2.4;
         if (d2 >= r * r || Math.abs(a.pos.y - b.pos.y) > 1.5) continue;
+        if (a.ghostTime > 0 || b.ghostTime > 0) continue;
         const d = Math.sqrt(d2) || 0.01;
         const nx = dx / d;
         const nz = dz / d;
@@ -578,6 +588,16 @@ export class Game {
       case 'spin': a.spinOut(); break;
       case 'bump': a.bump(); break;
       case 'oink': a.oink(); break;
+      case 'cannon': a.cannon(); break;
+      case 'ricochet': a.ricochet(); break;
+      case 'wraith': a.wraith(); break;
+      case 'steal': a.steal(); break;
+      case 'chalice': a.chalice(); break;
+      case 'seeker': a.seekerLaunch(); break;
+      case 'blast': a.seekerBlast(); break;
+      case 'thunder': a.thunder(); break;
+      case 'heart': a.dragonHeart(); break;
+      case 'feather': a.phoenix(); break;
       default:
         if (name.startsWith('power:')) a.power(name.slice(6));
     }
