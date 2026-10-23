@@ -347,6 +347,7 @@ export const FOREST: CourseDef = {
     wallHeight: 1.1,
   },
   music: { seed: 2718, tempo: 0.165 },
+  ambience: 'forest',
   decorate(track, g, rand) {
     const hills = waves(41, 0.012);
     const { mesh, heightAt } = buildTerrain(track, {

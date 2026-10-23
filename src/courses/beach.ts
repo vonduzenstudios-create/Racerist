@@ -47,7 +47,7 @@ function makeCrab(rand: () => number): WalkerModel {
     }
   }
   root.scale.setScalar(1.15);
-  return { root, legs, speed: 3 + rand(), sound: 'bump', color: 0xd8402a };
+  return { root, legs, speed: 3 + rand(), sound: 'bump', cry: 'boing', color: 0xd8402a };
 }
 
 function makeTurtle(): WalkerModel {
@@ -308,6 +308,7 @@ export const BEACH: CourseDef = {
     wallHeight: 0.9,
   },
   music: { seed: 4242, tempo: 0.15 },
+  ambience: 'beach',
   decorate(track, g, rand) {
     const dunes = waves(57, 0.02);
     const { mesh, heightAt } = buildTerrain(track, {

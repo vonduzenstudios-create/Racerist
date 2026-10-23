@@ -8,8 +8,10 @@ export interface WalkerModel {
   legs: THREE.Object3D[];
   /** Walking speed across the road, metres per second. */
   speed: number;
-  /** Sound played when a kart knocks it over. */
+  /** Sound played at the kart when it knocks this over. */
   sound: string;
+  /** Optional cry from the walker itself, such as a peasant's "ouch". */
+  cry?: string;
   /** Particle colour for the knock-over burst. */
   color: number;
 }
@@ -60,6 +62,8 @@ export interface CourseDef {
   env: CourseEnv;
   surfaces: CourseSurfaces;
   music: { seed: number; tempo: number };
+  /** Background sound bed, an id from AMBIENCES in sfx.ts. */
+  ambience: string;
   /** Builds everything off the road: ground, start gate, buildings, trees, landmarks. */
   decorate: (track: Track, group: THREE.Group, rand: () => number) => void;
 }

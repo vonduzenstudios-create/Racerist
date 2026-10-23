@@ -526,3 +526,39 @@ canvas.game {
     height: 120px;
   }
 }
+
+.flash {
+  position: absolute;
+  inset: 0;
+  background: #fffbe0;
+  opacity: 0;
+  pointer-events: none;
+}
+.flash.on {
+  animation: flash 0.6s ease-out;
+}
+@keyframes flash {
+  0% { opacity: 0.85; }
+  15% { opacity: 0.2; }
+  25% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+/* Eight racers plus the course row are tall; tighten the cards on short screens. */
+@media (max-height: 820px) {
+  .card {
+    padding: 8px 12px;
+  }
+
+  .card .tag {
+    display: none;
+  }
+
+  .card .power {
+    margin-top: 4px;
+  }
+
+  .course span {
+    display: none;
+  }
+}

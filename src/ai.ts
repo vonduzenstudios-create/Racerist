@@ -88,6 +88,21 @@ export class AiDriver {
           case 'fireball':
             use = gap(ahead) < 140 || this.itemHeldFor > 5;
             break;
+          case 'cannonball':
+            use = (gap(ahead) < 45 && Math.abs((ahead?.lateral ?? 99) - k.lateral) < 4) || this.itemHeldFor > 6;
+            break;
+          case 'wraith':
+            use = karts.some((o) => o.place < k.place && o.item) || this.itemHeldFor > 4;
+            break;
+          case 'chalice':
+            use = Math.abs(bend) < 0.4 && k.boostTime <= 0.1;
+            break;
+          case 'seeker':
+          case 'thunder':
+          case 'heart':
+          case 'feather':
+            use = true;
+            break;
         }
         if (use) {
           inp.item = true;
@@ -111,6 +126,18 @@ export class AiDriver {
           break;
         case 'mudBomb':
           use ||= gapAhead < 45 && gapAhead > 8;
+          break;
+        case 'dragonBreath':
+          use ||= gapAhead < 20 && gapAhead > 4;
+          break;
+        case 'frostNova':
+          use ||= karts.filter((o) => o !== k && o.pos.distanceTo(k.pos) < 16).length >= 2 || gapAhead < 10;
+          break;
+        case 'hexSwap':
+          use ||= gapAhead > 25 && gapAhead < 85;
+          break;
+        case 'phantom':
+          use ||= gapAhead < 12 || !!obstacle;
           break;
         case 'blink':
         case 'overclock':
