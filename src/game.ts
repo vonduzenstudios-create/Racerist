@@ -54,6 +54,7 @@ export class Game {
   private camPos = new THREE.Vector3();
   private shake = 0;
   private prevSteer = 0;
+  private prevPlace = 0;
   private accumulator = 0;
   private lastFrame = performance.now();
   private tmp = new THREE.Vector3();
@@ -199,8 +200,11 @@ export class Game {
     this.paused = false;
     this.ui.show('hud');
     this.ui.setWrongWay(false);
+    this.prevPlace = 0;
     this.audio.stopMusic();
+    this.audio.stopLoops();
     this.audio.startEngine();
+    this.audio.setAmbience(this.track.ambience);
   }
 
   private finishRace() {
@@ -234,6 +238,9 @@ export class Game {
     this.player = null;
     this.ui.hidePanel();
     this.audio.stopEngine();
+    this.audio.stopLoops();
+    this.audio.setAmbience(null);
+    this.audio.play('menuBack');
     this.audio.playMusic(7, 0.2);
     this.state = 'select';
     this.paused = false;
@@ -245,6 +252,7 @@ export class Game {
   private togglePause() {
     if (this.state !== 'race' && this.state !== 'countdown') return;
     this.paused = !this.paused;
+    this.audio.play(this.paused ? 'pause' : 'unpause');
     if (this.paused) {
       this.ui.showPanel('<h2>Paused</h2>', [
         { label: 'Resume', action: () => this.togglePause() },
@@ -289,8 +297,18 @@ export class Game {
       this.ui.updateHud(this.player, this.karts, this.raceTime, this.time);
       const ratio = Math.max(0, this.player.speed) / this.player.topSpeed;
       this.audio.updateEngine(this.paused ? 0 : ratio, this.paused ? 0 : input.throttle);
+      this.updateLoops(this.player, ratio);
     }
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Listener position and the continuous drift / offroad / boost layers for the player. */
+  private updateLoops(p: Kart, ratio: number) {
+    this.audio.setListener(p.pos, p.heading);
+    const on = !this.paused && this.state !== 'countdown';
+    this.audio.setLoop('drift', on && p.drifting && p.grounded ? 0.5 + p.driftTier * 0.2 : 0, p.driftTier);
+    this.audio.setLoop('offroad', on && p.offroad && p.grounded && p.speed > 4 ? 0.5 * Math.min(1, ratio + 0.3) : 0, ratio);
+    this.audio.setLoop('boost', on && (p.boostTime > 0 || p.activePower === 'overclock') ? 0.45 : 0, ratio);
   }
 
   private handleMenus(input: KartInput) {
@@ -356,7 +374,9 @@ export class Game {
     const smp = this.track.samples[p.trackIndex];
     const backwards = Math.sin(p.heading) * smp.tan.x + Math.cos(p.heading) * smp.tan.z < -0.3;
     this.wrongWayTime = backwards && p.speed > 2 && this.state === 'race' ? this.wrongWayTime + dt : 0;
-    this.ui.setWrongWay(this.wrongWayTime > 1);
+    const wrongWay = this.wrongWayTime > 1;
+    if (wrongWay && this.wrongWayTime - dt <= 1) this.audio.play('wrongWay');
+    this.ui.setWrongWay(wrongWay);
   }
 
   private stallTime = 0;
@@ -381,9 +401,12 @@ export class Game {
       this.audio.playMusic(1234, 0.155);
       this.state = 'race';
       const held = this.throttleHeldAt;
-      if (held > 0 && held <= 1.75 && held >= 0.7) this.player!.boost(1.3);
-      else if (held > 2.2) {
+      if (held > 0 && held <= 1.75 && held >= 0.7) {
+        this.player!.boost(1.3);
+        this.audio.play('startBoost');
+      } else if (held > 2.2) {
         this.stallTime = 0.8;
+        this.audio.play('flood');
         this.ui.toast('Flooded the engine!', 1.5);
       }
       for (const k of this.karts) {
@@ -502,6 +525,11 @@ export class Game {
     }
     const running = this.karts.filter((k) => !k.finished).sort((a, b) => b.progress - a.progress);
     [...this.finishOrder, ...running].forEach((k, i) => (k.place = i + 1));
+    const p = this.player;
+    if (p && this.state === 'race' && this.prevPlace && p.place !== this.prevPlace) {
+      this.audio.play(p.place < this.prevPlace ? 'overtake' : 'lostPlace');
+    }
+    this.prevPlace = p?.place ?? 0;
   }
 
   private updateRubberBand() {
@@ -535,6 +563,7 @@ export class Game {
               break;
             case 'spin':
               this.audio.spinOut();
+              this.audio.play('ouch', { pitch: 1.5 - k.weight * 0.5 });
               this.shake = 0.4;
               break;
             case 'blocked':
@@ -565,23 +594,9 @@ export class Game {
 
   /** Plays a sound if it happened near the player, so distant AI chaos stays quiet. */
   private positionalSfx(name: string, pos: THREE.Vector3) {
-    const p = this.player;
-    if (p && pos.distanceTo(p.pos) > 70) return;
-    const a = this.audio;
-    switch (name) {
-      case 'pickup': a.pickup(); break;
-      case 'throw': a.throwItem(); break;
-      case 'drop': a.dropItem(); break;
-      case 'explosion': a.explosion(); break;
-      case 'splat': a.splat(); break;
-      case 'ward': a.shieldBlock(); break;
-      case 'spin': a.spinOut(); break;
-      case 'bump': a.bump(); break;
-      case 'oink': a.oink(); break;
-      default:
-        if (name.startsWith('power:')) a.power(name.slice(6));
-    }
+    this.audio.play(name, { pos });
   }
+
 
   private updateCamera(dt: number, input: KartInput) {
     const cam = this.camera;

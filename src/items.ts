@@ -102,11 +102,12 @@ export class ItemSystem {
     switch (item) {
       case 'potion':
         kart.boost(1.5);
+        this.sfx('potion', kart.pos);
         this.particles.burst(kart.pos.clone().setY(kart.pos.y + 1), 0x7dff9a, 20, 6, { life: 0.5, size: 0.6 });
         break;
       case 'ward':
         kart.shieldTime = 12;
-        this.sfx('ward', kart.pos);
+        this.sfx('wardUp', kart.pos);
         break;
       case 'cabbage': {
         const mesh = makeCabbage();
@@ -155,7 +156,7 @@ export class ItemSystem {
           if (!k.item) {
             k.item = rollItem(k.place);
             k.rouletteTime = 1.1;
-            if (k.isPlayer) this.sfx('pickup', k.pos);
+            this.sfx(k.isPlayer ? 'pickup' : 'boxBreak', k.pos);
           }
           break;
         }
