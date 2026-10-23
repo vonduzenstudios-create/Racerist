@@ -177,6 +177,66 @@ canvas.game {
   color: var(--gold);
 }
 
+.courses {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  max-width: 1100px;
+}
+
+.row-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--gold);
+  text-shadow: 0 2px 4px #000;
+}
+
+.course {
+  display: grid;
+  grid-template-columns: 1fr 48px;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  width: 230px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 2px solid rgba(243, 210, 122, 0.25);
+  background: rgba(29, 20, 12, 0.85);
+  color: var(--parchment);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.course b {
+  font-family: Georgia, serif;
+  font-size: 16px;
+}
+
+.course span {
+  grid-row: 2;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.course .thumb {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  width: 48px;
+  height: 48px;
+}
+
+.course.active {
+  border-color: var(--gold);
+  box-shadow: 0 4px 18px rgba(243, 210, 122, 0.25);
+}
+
+.course.active b {
+  color: var(--gold);
+}
+
 .difficulty {
   display: flex;
   gap: 10px;
@@ -482,4 +542,23 @@ canvas.game {
   15% { opacity: 0.2; }
   25% { opacity: 0.7; }
   100% { opacity: 0; }
+}
+
+/* Eight racers plus the course row are tall; tighten the cards on short screens. */
+@media (max-height: 820px) {
+  .card {
+    padding: 8px 12px;
+  }
+
+  .card .tag {
+    display: none;
+  }
+
+  .card .power {
+    margin-top: 4px;
+  }
+
+  .course span {
+    display: none;
+  }
 }

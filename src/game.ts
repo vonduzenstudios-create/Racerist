@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { AiDriver } from './ai';
 import { AudioEngine } from './audio';
 import { CHARACTERS } from './characters';
+import { COURSES } from './courses';
 import { Hazards } from './hazards';
 import { emptyInput, PlayerInput, type KartInput } from './input';
 import { ItemSystem } from './items';
@@ -26,10 +27,13 @@ export class Game {
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(72, 1, 0.3, 2000);
   private sun: THREE.DirectionalLight;
-  private track: Track;
+  private hemi: THREE.HemisphereLight;
+  /** Everything that belongs to the current course, rebuilt when the course changes. */
+  private world = new THREE.Group();
+  private track!: Track;
   private particles: Particles;
-  private items: ItemSystem;
-  private hazards: Hazards;
+  private items!: ItemSystem;
+  private hazards!: Hazards;
   private audio = new AudioEngine();
   private input = new PlayerInput();
   private ui: UI;
@@ -41,6 +45,7 @@ export class Game {
   private player: Kart | null = null;
   private previewKart: Kart | null = null;
   private selected = 0;
+  private courseIndex = 0;
   private difficulty = 1;
 
   private time = 0;
@@ -55,6 +60,7 @@ export class Game {
   private camPos = new THREE.Vector3();
   private shake = 0;
   private prevSteer = 0;
+  private prevPadVert = 0;
   private prevPlace = 0;
   private accumulator = 0;
   private lastFrame = performance.now();
@@ -71,10 +77,10 @@ export class Game {
     this.renderer.domElement.className = 'game';
     root.append(this.renderer.domElement);
 
-    this.scene.background = skyTexture();
-    this.scene.fog = new THREE.Fog(0xf2dcc0, 180, 750);
-    this.scene.add(new THREE.HemisphereLight(0xd6ecff, 0x8a7a5a, 1.5));
-    this.sun = new THREE.DirectionalLight(0xfff0d6, 2.2);
+    this.scene.fog = new THREE.Fog(0xffffff, 180, 750);
+    this.hemi = new THREE.HemisphereLight(0xffffff, 0x888888, 1.5);
+    this.scene.add(this.hemi);
+    this.sun = new THREE.DirectionalLight(0xffffff, 2.2);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
     const sc = this.sun.shadow.camera;
@@ -85,31 +91,18 @@ export class Game {
     this.sun.shadow.bias = -0.0005;
     this.scene.add(this.sun, this.sun.target);
 
-    this.track = new Track();
-    this.scene.add(this.track.group);
     this.particles = new Particles(this.scene);
-    const sfx = (name: string, pos: THREE.Vector3) => this.positionalSfx(name, pos);
-    this.items = new ItemSystem(this.scene, this.track, this.particles, sfx);
-    this.items.hooks = {
-      toast: (k, text) => {
-        if (k.isPlayer) this.ui.toast(text, 2);
-      },
-      flash: () => {
-        this.ui.flash();
-        this.shake = 0.5;
-      },
-    };
-    this.hazards = new Hazards(this.scene, this.track, this.particles, sfx);
-
     this.ui = new UI(root);
-    this.ui.buildMinimap(this.track);
+    this.loadCourse(0);
     this.ui.buildSelect(
       CHARACTERS,
+      COURSES,
       (i) => this.pick(i),
+      (i) => this.pickCourse(i),
       (d) => {
         this.difficulty = d;
         this.audio.menuMove();
-        this.ui.setSelected(this.selected, this.difficulty);
+        this.refreshSelect();
       },
       () => this.startRace(),
     );
@@ -119,6 +112,8 @@ export class Game {
       if (this.state === 'select' && !this.ui.panelOpen && !e.repeat) {
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') this.pick(this.selected - 1);
         if (e.code === 'ArrowRight' || e.code === 'KeyD') this.pick(this.selected + 1);
+        if (e.code === 'ArrowUp' || e.code === 'KeyW') this.pickCourse(this.courseIndex - 1);
+        if (e.code === 'ArrowDown' || e.code === 'KeyS') this.pickCourse(this.courseIndex + 1);
       }
       if (!e.repeat && (e.code === 'Enter' || e.code === 'NumpadEnter')) {
         if (this.state === 'title') this.openSelect();
@@ -151,14 +146,66 @@ export class Game {
     this.audio.playMusic(7, 0.2);
     this.state = 'select';
     this.ui.show('select');
-    this.ui.setSelected(this.selected, this.difficulty);
+    this.refreshSelect();
+  }
+
+  private refreshSelect() {
+    this.ui.setSelected(this.selected, this.difficulty, this.courseIndex);
   }
 
   private pick(i: number) {
     this.selected = (i + CHARACTERS.length) % CHARACTERS.length;
     this.audio.menuMove();
-    this.ui.setSelected(this.selected, this.difficulty);
+    this.refreshSelect();
     this.showPreview();
+  }
+
+  private pickCourse(i: number) {
+    const next = (i + COURSES.length) % COURSES.length;
+    this.audio.menuMove();
+    if (next === this.courseIndex) return;
+    this.loadCourse(next);
+    this.refreshSelect();
+    this.showPreview();
+  }
+
+  /** Tears down the current course world and builds course `i`, with its own sky and light. */
+  private loadCourse(i: number) {
+    this.courseIndex = i;
+    const course = COURSES[i];
+    this.scene.remove(this.world);
+    disposeTree(this.world);
+    this.world = new THREE.Group();
+    this.scene.add(this.world);
+
+    this.track = new Track(course);
+    this.world.add(this.track.group);
+    const sfx = (name: string, pos: THREE.Vector3) => this.positionalSfx(name, pos);
+    this.items = new ItemSystem(this.world, this.track, this.particles, sfx);
+    this.items.hooks = {
+      toast: (k, text) => {
+        if (k.isPlayer) this.ui.toast(text, 2);
+      },
+      flash: () => {
+        this.ui.flash();
+        this.shake = 0.5;
+      },
+    };
+    this.hazards = new Hazards(this.world, this.track, this.particles, sfx);
+
+    const env = course.env;
+    (this.scene.background as THREE.Texture | null)?.dispose();
+    this.scene.background = skyTexture(env.sky);
+    const fog = this.scene.fog as THREE.Fog;
+    fog.color.setHex(env.fog);
+    fog.near = env.fogNear;
+    fog.far = env.fogFar;
+    this.hemi.color.setHex(env.hemiSky);
+    this.hemi.groundColor.setHex(env.hemiGround);
+    this.hemi.intensity = env.hemiIntensity;
+    this.sun.color.setHex(env.sun);
+    this.sun.intensity = env.sunIntensity;
+    this.ui.buildMinimap(this.track);
   }
 
   /** Parks the highlighted racer in front of the gatehouse for the menu camera. */
@@ -201,7 +248,7 @@ export class Game {
 
     const p = this.player!;
     this.camYaw = p.heading;
-    this.camPos.copy(p.pos).addScaledVector(p.forward(), -8).setY(4);
+    this.camPos.copy(p.pos).addScaledVector(p.forward(), -8).setY(p.pos.y + 4);
     this.raceTime = 0;
     this.countdown = COUNTDOWN;
     this.lastCount = 4;
@@ -214,7 +261,7 @@ export class Game {
     this.audio.stopMusic();
     this.audio.stopLoops();
     this.audio.startEngine();
-    this.audio.setAmbience(this.track.ambience);
+    this.audio.setAmbience(this.track.course.ambience);
   }
 
   private finishRace() {
@@ -255,7 +302,7 @@ export class Game {
     this.state = 'select';
     this.paused = false;
     this.ui.show('select');
-    this.ui.setSelected(this.selected, this.difficulty);
+    this.refreshSelect();
     this.showPreview();
   }
 
@@ -334,10 +381,13 @@ export class Game {
     if (this.state === 'title' && this.input.confirmPressed) this.openSelect();
     else if (this.state === 'select') {
       if (steerEdge && this.input.padSteer) this.pick(this.selected + steerEdge);
+      const vert = padVertical();
+      if (vert && vert !== this.prevPadVert) this.pickCourse(this.courseIndex + vert);
+      this.prevPadVert = vert;
       if (this.input.confirmPressed) this.startRace();
       if (input.item) {
         this.difficulty = (this.difficulty + 1) % DIFFICULTIES.length;
-        this.ui.setSelected(this.selected, this.difficulty);
+        this.refreshSelect();
       }
     } else if (this.input.pausePressed) this.togglePause();
   }
@@ -408,7 +458,8 @@ export class Game {
       this.lastCount = 0;
       this.ui.center('GO!', 1);
       this.audio.countdown(true);
-      this.audio.playMusic(1234, 0.155);
+      const { music } = this.track.course;
+      this.audio.playMusic(music.seed, music.tempo);
       this.state = 'race';
       const held = this.throttleHeldAt;
       if (held > 0 && held <= 1.75 && held >= 0.7) {
@@ -547,10 +598,10 @@ export class Game {
       this.particles.emit(k.pos.clone().setY(k.pos.y + 2), new THREE.Vector3((Math.random() - 0.5) * 2, 0.5, (Math.random() - 0.5) * 2), 0xe6f8ff, { life: 0.5, size: 0.35 });
     }
     if (k.offroad && k.speed > 8 && k.grounded) {
-      this.particles.emit(base.clone().setY(0.4), new THREE.Vector3(0, 1.5, 0), 0xb89a70, { life: 0.6, size: 0.7, grow: 1, additive: false });
+      this.particles.emit(base.clone().setY(k.pos.y + 0.4), new THREE.Vector3(0, 1.5, 0), this.track.course.env.dust, { life: 0.6, size: 0.7, grow: 1, additive: false });
     }
     if (k.spinTime > 0) {
-      this.particles.emit(k.pos.clone().setY(2.6), new THREE.Vector3((Math.random() - 0.5) * 2, 1, (Math.random() - 0.5) * 2), 0xffee66, { life: 0.4, size: 0.4 });
+      this.particles.emit(k.pos.clone().setY(k.pos.y + 2.6), new THREE.Vector3((Math.random() - 0.5) * 2, 1, (Math.random() - 0.5) * 2), 0xffee66, { life: 0.4, size: 0.4 });
     }
   }
 
@@ -685,8 +736,8 @@ export class Game {
       const k = this.previewKart;
       if (!k) return;
       const a = this.time * 0.35;
-      cam.position.set(k.pos.x + Math.sin(a) * 9, 3.6, k.pos.z + Math.cos(a) * 9);
-      cam.lookAt(k.pos.x, 1.6, k.pos.z);
+      cam.position.set(k.pos.x + Math.sin(a) * 9, k.pos.y + 3.6, k.pos.z + Math.cos(a) * 9);
+      cam.lookAt(k.pos.x, k.pos.y + 1.6, k.pos.z);
       k.model.rotation.y = k.heading;
       this.sun.position.set(k.pos.x + 60, 120, k.pos.z + 40);
       this.sun.target.position.copy(k.pos);
@@ -701,7 +752,9 @@ export class Game {
     const back = input.lookBack ? -1 : 1;
     const fwd = this.tmp.set(Math.sin(this.camYaw), 0, Math.cos(this.camYaw));
     const desired = this.tmp2.copy(p.pos).addScaledVector(fwd, -7.5 * back);
-    desired.y = p.pos.y * 0.6 + 3.3;
+    // Only part of a jump's height reaches the camera; hills are followed in full.
+    const bed = this.track.baseHeightAt(p.s);
+    desired.y = bed + (p.pos.y - bed) * 0.6 + 3.3;
     if (input.lookBack) this.camPos.copy(desired);
     else this.camPos.lerp(desired, 1 - Math.exp(-12 * dt));
     cam.position.copy(this.camPos);
@@ -717,4 +770,29 @@ export class Game {
     this.sun.position.set(p.pos.x + 60, 120, p.pos.z + 40);
     this.sun.target.position.copy(p.pos);
   }
+}
+
+/** D-pad or left stick up/down on the first gamepad: -1 up, 1 down, 0 neither. */
+function padVertical(): number {
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  for (const p of pads) {
+    if (!p || !p.connected) continue;
+    if (p.buttons[12]?.pressed || (p.axes[1] ?? 0) < -0.6) return -1;
+    if (p.buttons[13]?.pressed || (p.axes[1] ?? 0) > 0.6) return 1;
+    return 0;
+  }
+  return 0;
+}
+
+/** Frees the GPU resources of everything under `root`. */
+function disposeTree(root: THREE.Object3D) {
+  root.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.geometry.dispose();
+    for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      for (const v of Object.values(m)) if (v instanceof THREE.Texture) v.dispose();
+      m.dispose();
+    }
+  });
 }

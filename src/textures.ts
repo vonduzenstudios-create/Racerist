@@ -3,14 +3,14 @@ import { mulberry32 } from './rng';
 
 // Every texture in the game is painted onto a canvas here at startup.
 
-function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
+export function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
   return [c, c.getContext('2d')!];
 }
 
-function toTexture(c: HTMLCanvasElement, repeat = true): THREE.CanvasTexture {
+export function toTexture(c: HTMLCanvasElement, repeat = true): THREE.CanvasTexture {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   if (repeat) {
@@ -21,7 +21,7 @@ function toTexture(c: HTMLCanvasElement, repeat = true): THREE.CanvasTexture {
   return tex;
 }
 
-function speckle(ctx: CanvasRenderingContext2D, w: number, h: number, rand: () => number, count: number, alpha: number) {
+export function speckle(ctx: CanvasRenderingContext2D, w: number, h: number, rand: () => number, count: number, alpha: number) {
   for (let i = 0; i < count; i++) {
     const v = Math.floor(rand() * 255);
     ctx.fillStyle = `rgba(${v},${v},${v},${alpha})`;
@@ -202,13 +202,13 @@ export function itemBoxTexture(): THREE.CanvasTexture {
   return toTexture(c, false);
 }
 
-export function skyTexture(): THREE.CanvasTexture {
+/** Vertical sky gradient from the zenith (first stop) down to the horizon (last stop). */
+export function skyTexture(stops: string[]): THREE.CanvasTexture {
   const [c, ctx] = canvas(4, 256);
   const g = ctx.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0, '#3a8fd9');
-  g.addColorStop(0.55, '#9fd3f5');
-  g.addColorStop(0.8, '#ffe2b8');
-  g.addColorStop(1, '#ffd29a');
+  // Stops bunch toward the horizon, which is where most of the visible sky is.
+  const at = [0, 0.55, 0.8, 1];
+  stops.forEach((col, i) => g.addColorStop(stops.length === 4 ? at[i] : i / (stops.length - 1), col));
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 4, 256);
   return toTexture(c, false);

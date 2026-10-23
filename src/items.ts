@@ -129,7 +129,7 @@ export class ItemSystem {
   private tmp = new THREE.Vector3();
 
   constructor(
-    private scene: THREE.Scene,
+    private scene: THREE.Object3D,
     private track: Track,
     private particles: Particles,
     private sfx: SfxFn,
@@ -411,8 +411,8 @@ export class ItemSystem {
       b.vel.y -= 28 * dt;
       b.mesh.position.addScaledVector(b.vel, dt);
       b.mesh.rotation.x += dt * 6;
-      if (b.mesh.position.y <= 0.2) {
-        const proj = this.track.project(b.mesh.position);
+      const proj = this.track.project(b.mesh.position);
+      if (b.mesh.position.y <= this.track.groundAt(proj.s, proj.lateral) + 0.2) {
         const mesh = new THREE.Mesh(new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2), this.mudMat);
         this.track.pointAt(proj.s, Math.max(-9, Math.min(9, proj.lateral)), mesh.position);
         mesh.position.y += 0.07;
@@ -443,7 +443,7 @@ export class ItemSystem {
         const dz = k.pos.z - p.mesh.position.z;
         if (dx * dx + dz * dz < p.radius * p.radius && k.grounded) {
           if (!k.inMud && k.speed > 10 && Math.random() < 0.3) {
-            this.particles.emit(k.pos.clone().setY(0.5), new THREE.Vector3((Math.random() - 0.5) * 4, 4, (Math.random() - 0.5) * 4), 0x5a3b22, { life: 0.5, size: 0.5, gravity: 10, additive: false });
+            this.particles.emit(k.pos.clone().setY(k.pos.y + 0.5), new THREE.Vector3((Math.random() - 0.5) * 4, 4, (Math.random() - 0.5) * 4), 0x5a3b22, { life: 0.5, size: 0.5, gravity: 10, additive: false });
           }
           k.inMud = true;
         }

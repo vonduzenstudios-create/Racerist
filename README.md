@@ -1,12 +1,15 @@
 # Racerist
 
-A browser kart racer tech demo set in a medieval city. Every model, texture, sound effect and song is generated in code at startup. There are no image, model or audio files in the repo.
+A browser kart racer tech demo across the fantasy realms. Every model, texture, sound effect and song is generated in code at startup. There are no image, model or audio files in the repo.
 
 **Play:** https://vonduzenstudios-create.github.io/Racerist/ (after the Pages deploy runs)
 
 ## What's in the demo
 
-- **One course:** a three-lap circuit through a half-timbered medieval town, under a castle gatehouse, over a wooden jump ramp, past market stalls, with the castle on the hill and the city walls on the horizon.
+- **Courses**, picked on the select screen (Up/Down or the d-pad), three laps each:
+  - **Castle Town:** a half-timbered medieval town, under a castle gatehouse, over a wooden jump ramp, past market stalls, with the castle on the hill and the city walls on the horizon.
+  - **Whispering Woods:** a dirt road over rolling hills through pine, oak and birch forest, across a plank bridge over a stream, through a glade of giant glowing toadstools, past an ancient tree, with two log jumps.
+  - **Sunset Shore:** a sandy loop round a palm-covered island between the dunes and the surf, past parasols, beach huts and sandcastles, with a lighthouse and a tall ship offshore and two jumps.
 - **Eight racers** (all eight start every race), each with different stats and a special power that charges over time:
   - **Dark Orc:** heavy and fast. *Rampage* makes it faster, immune to hazards, and spins out anyone it rams.
   - **Light Elf:** light, with the best handling. *Blink* teleports it 35 metres up the road.
@@ -18,7 +21,7 @@ A browser kart racer tech demo set in a medieval city. Every model, texture, sou
   - **Pixie:** tiny, with the best acceleration and handling. *Hex Swap* trades places with the racer just ahead (within 90 m).
 - **Items** from the ? boxes, weighted by your place: Haste Potion (boost), Rotten Cabbage (dropped trap), Fireball (homes in on the racer ahead), Magic Ward (blocks one hit).
 - **Driving:** hop-drift with two boost tiers (blue then orange sparks), a start boost, jumps, wall glancing, and slow cobbled verges.
-- **Hazards:** peasants carrying hay, bread and kegs, plus pigs, wander across the market crossings.
+- **Hazards:** each course sends something across the road: peasants and pigs in Castle Town, deer and boar in the woods, crabs and a turtle on the shore.
 - **AI rivals** with three difficulties (Squire, Knight, King) that take racing lines, drift, dodge traps, and use items and powers.
 - **Audio:** Web Audio synthesis for the engine, effects, and a seeded saltarello-style tune (drone, lute, recorder and tabor) that speeds up on the final lap.
 
@@ -55,12 +58,13 @@ Add `?autopilot` to the URL to let the AI drive your kart, which is handy for te
 | File | Purpose |
 | --- | --- |
 | `src/game.ts` | Scene, race flow, powers, collisions, camera |
-| `src/track.ts` | Spline track, queries, and all course scenery |
+| `src/track.ts` | Spline track (with elevation and ramps), queries, road, verges and walls |
+| `src/courses/` | One module per course (`CourseDef`: layout, sky, surfaces, hazards, scenery), the `COURSES` registry, and shared terrain/prop helpers |
 | `src/kart.ts` | Arcade kart physics and drift/boost logic |
 | `src/characters.ts` | Racer stats, powers and procedural models |
 | `src/ai.ts` | AI driver |
 | `src/items.ts` | Item boxes, items, mud puddles |
-| `src/hazards.ts` | Peasants and pigs |
+| `src/hazards.ts` | Walkers that cross the road, built by each course |
 | `src/audio.ts` | Synth sound effects and music sequencer |
 | `src/textures.ts` | Canvas-painted textures |
 | `src/ui.ts`, `src/style.css` | Menus, HUD, minimap, results |
