@@ -273,6 +273,23 @@ export const SOUNDS: Record<string, SoundFn> = {
     for (let i = 0; i < 6; i++) v.tone(220 * Math.pow(1.26, i), 0.1, 'square', 0.14, i * 0.05);
   },
   'power:mudBomb': (v) => SOUNDS.throw(v),
+  'power:dragonBreath': (v) => {
+    v.noise(0.9, 0.45, 'bandpass', 500, 0, 1800);
+    v.tone(110, 0.7, 'sawtooth', 0.25, 0, 55);
+  },
+  'power:frostNova': (v) => {
+    v.noise(0.6, 0.2, 'highpass', 6000, 0, 2000);
+    v.arp([1568, 1319, 1047, 784], 0.05, 0.25, 'triangle', 0.14);
+  },
+  'power:phantom': (v) => {
+    v.tone(330, 1.0, 'sine', 0.2, 0, 220);
+    v.tone(335, 1.0, 'sine', 0.2, 0.05, 210);
+    v.tone(660, 0.8, 'triangle', 0.08, 0.1, 440);
+  },
+  'power:hexSwap': (v) => {
+    v.arp([988, 1319, 988, 1568], 0.06, 0.1, 'square', 0.12);
+    v.noise(0.3, 0.15, 'highpass', 5000, 0.1);
+  },
 
   // ----- ready-made sounds for new items -----
   ghost: (v) => {

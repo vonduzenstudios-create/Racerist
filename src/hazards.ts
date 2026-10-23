@@ -140,6 +140,7 @@ export class Hazards {
 
       if (w.knocked > 0) continue;
       for (const k of karts) {
+        if (k.activePower === 'phantom') continue;
         const d = this.tmp.copy(k.pos).sub(w.root.position);
         d.y = 0;
         if (d.lengthSq() < 2.0 * 2.0 && k.pos.y < 1.5) {
