@@ -19,6 +19,9 @@ export class Kart {
   private readonly blinkers: THREE.Mesh[] = [];
   readonly shieldMesh: THREE.Mesh;
   readonly auraMesh: THREE.Mesh;
+  readonly frostMesh: THREE.Mesh;
+  private readonly ghostMats: THREE.Material[] = [];
+  private ghostly = false;
 
   // Tuned from the 1..5 stats.
   readonly topSpeed: number;
@@ -52,6 +55,8 @@ export class Kart {
   spinTime = 0;
   private spinAngle = 0;
   shieldTime = 0;
+  /** Frozen by a Frost Nova: top speed is cut while this runs. */
+  chillTime = 0;
   inMud = false;
   offroad = false;
   airTime = 0;
@@ -90,6 +95,11 @@ export class Kart {
         if (o.userData.front) this.frontWheels.push(o);
       }
       if (o.userData.blink) this.blinkers.push(o as THREE.Mesh);
+      const mat = (o as THREE.Mesh).material;
+      if (mat && !Array.isArray(mat) && !this.ghostMats.includes(mat)) {
+        mat.userData = { transparent: mat.transparent, opacity: mat.opacity };
+        this.ghostMats.push(mat);
+      }
     });
     // Blob shadow keeps karts grounded visually even outside the shadow camera.
     const blob = new THREE.Mesh(
@@ -115,6 +125,14 @@ export class Kart {
     this.auraMesh.position.y = 1.0;
     this.auraMesh.visible = false;
     this.model.add(this.auraMesh);
+    this.frostMesh = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(1.9, 0),
+      new THREE.MeshLambertMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.45, flatShading: true }),
+    );
+    this.frostMesh.position.y = 1.0;
+    this.frostMesh.scale.y = 0.8;
+    this.frostMesh.visible = false;
+    this.model.add(this.frostMesh);
   }
 
   /** Metres raced since the start, used for placings and gaps. */
@@ -150,7 +168,7 @@ export class Kart {
   /** Something hit the kart. Returns false if it was protected. */
   hit(): boolean {
     if (this.spinTime > 0) return false;
-    if (this.activePower === 'rampage') return false;
+    if (this.activePower === 'rampage' || this.activePower === 'phantom') return false;
     if (this.shieldTime > 0) {
       this.shieldTime = 0;
       this.events.push('blocked');
@@ -171,7 +189,9 @@ export class Kart {
     let max = this.topSpeed * this.speedScale;
     const roughImmune = this.boostTime > 0 || this.activePower === 'overclock' || this.activePower === 'rampage';
     if (this.offroad && !roughImmune) max *= 0.55;
-    if (this.inMud && this.activePower !== 'rampage') max *= 0.45;
+    if (this.inMud && this.activePower !== 'rampage' && this.activePower !== 'phantom') max *= 0.45;
+    if (this.chillTime > 0) max *= 0.5;
+    if (this.activePower === 'phantom') max *= 1.08;
     if (this.activePower === 'rampage') max *= 1.1;
     if (this.activePower === 'overclock') max *= 1.22;
     if (this.boostTime > 0) max *= 1.32;
@@ -184,6 +204,7 @@ export class Kart {
 
     this.boostTime = Math.max(0, this.boostTime - dt);
     this.shieldTime = Math.max(0, this.shieldTime - dt);
+    this.chillTime = Math.max(0, this.chillTime - dt);
     if (this.powerActive > 0) {
       this.powerActive -= dt;
       if (this.powerActive <= 0) this.activePower = null;
@@ -332,6 +353,22 @@ export class Kart {
     this.drifting = false;
   }
 
+  /** Trades places on the road with another kart (the Pixie's Hex Swap). */
+  swapWith(o: Kart) {
+    const fields = ['heading', 'speed', 'vy', 'grounded', 'airTime', 'trackIndex', 's', 'lateral', 'lap'] as const;
+    for (const f of fields) {
+      const t = this[f];
+      (this as any)[f] = o[f];
+      (o as any)[f] = t;
+    }
+    const p = this.pos.clone();
+    this.pos.copy(o.pos);
+    o.pos.copy(p);
+    this.drifting = o.drifting = false;
+    this.driftCharge = o.driftCharge = 0;
+    this.driftTier = o.driftTier = 0;
+  }
+
   private crossLine(dir: number) {
     this.lap += dir;
     if (dir > 0 && this.lap >= 2) this.events.push('lap');
@@ -359,5 +396,16 @@ export class Kart {
     this.auraMesh.visible = this.activePower === 'rampage';
     if (this.auraMesh.visible) this.auraMesh.scale.setScalar(1 + Math.sin(time * 20) * 0.06);
     m.visible = !(this.activePower === 'blink' && this.powerActive > 0.15);
+    this.frostMesh.visible = this.chillTime > 0;
+    const ghostly = this.activePower === 'phantom';
+    if (ghostly !== this.ghostly) {
+      this.ghostly = ghostly;
+      for (const mat of this.ghostMats) {
+        const orig = mat.userData as { transparent: boolean; opacity: number };
+        mat.transparent = ghostly || orig.transparent;
+        mat.opacity = ghostly ? 0.35 : orig.opacity;
+        mat.needsUpdate = true;
+      }
+    }
   }
 }

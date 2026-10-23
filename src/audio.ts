@@ -153,6 +153,23 @@ export class AudioEngine {
       case 'mudBomb':
         this.throwItem();
         break;
+      case 'dragonBreath':
+        this.noise(0.9, 0.45, 'bandpass', 500, 0, 1800);
+        this.tone(110, 0.7, 'sawtooth', 0.25, 0, 55);
+        break;
+      case 'frostNova':
+        this.noise(0.6, 0.2, 'highpass', 6000, 0, 2000);
+        [1568, 1319, 1047, 784].forEach((f, i) => this.tone(f, 0.25, 'triangle', 0.14, i * 0.05));
+        break;
+      case 'phantom':
+        this.tone(330, 1.0, 'sine', 0.2, 0, 220);
+        this.tone(335, 1.0, 'sine', 0.2, 0.05, 210);
+        this.tone(660, 0.8, 'triangle', 0.08, 0.1, 440);
+        break;
+      case 'hexSwap':
+        [988, 1319, 988, 1568].forEach((f, i) => this.tone(f, 0.1, 'square', 0.12, i * 0.06));
+        this.noise(0.3, 0.15, 'highpass', 5000, 0.1);
+        break;
     }
   }
   splat() {
