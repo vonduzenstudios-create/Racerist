@@ -591,6 +591,10 @@ export class Game {
             case 'blocked':
               this.audio.shieldBlock();
               break;
+            case 'fall':
+              this.audio.fall();
+              this.ui.toast('Back on the road!', 1.2);
+              break;
             case 'land':
               this.audio.bump();
               this.shake = 0.15;
@@ -629,6 +633,7 @@ export class Game {
       case 'spin': a.spinOut(); break;
       case 'bump': a.bump(); break;
       case 'oink': a.oink(); break;
+      case 'boo': a.boo(); break;
       default:
         if (name.startsWith('power:')) a.power(name.slice(6));
     }

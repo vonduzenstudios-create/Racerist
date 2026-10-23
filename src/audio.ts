@@ -163,6 +163,17 @@ export class AudioEngine {
     this.tone(520, 0.12, 'sawtooth', 0.15, 0, 300);
     this.tone(480, 0.14, 'sawtooth', 0.15, 0.14, 260);
   }
+  /** Whistling drop after going over an open edge, then a sparkle as the kart is put back. */
+  fall() {
+    this.tone(900, 0.7, 'sine', 0.14, 0, 120);
+    this.tone(660, 0.12, 'triangle', 0.1, 0.75);
+    this.tone(990, 0.16, 'triangle', 0.1, 0.85);
+  }
+  /** A ghost's falling wail when a kart drives through it. */
+  boo() {
+    this.tone(660, 0.5, 'sine', 0.16, 0, 330);
+    this.tone(990, 0.45, 'triangle', 0.06, 0.05, 500);
+  }
   menuMove() {
     this.tone(700, 0.06, 'square', 0.1);
   }
