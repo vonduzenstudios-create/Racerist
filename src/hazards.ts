@@ -147,7 +147,10 @@ export class Hazards {
           const fell = k.hit();
           w.knocked = 2.5;
           this.particles.burst(w.root.position.clone().setY(2.5), w.isPig ? 0xf0a0a8 : 0xd8c060, 16, 6, { life: 0.7, size: 0.5, gravity: 10, additive: false });
-          if (fell || k.activePower === 'rampage') this.sfx(w.isPig ? 'oink' : 'bump', k.pos);
+          if (fell || k.activePower === 'rampage') {
+            this.sfx(w.isPig ? 'oink' : 'bump', k.pos);
+            if (!w.isPig) this.sfx('ouch', w.root.position);
+          }
           break;
         }
       }

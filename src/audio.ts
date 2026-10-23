@@ -1,8 +1,21 @@
 import { mulberry32 } from './rng';
+import { AMBIENCES, Ambience, LOOPS, SOUNDS, Voice, type LoopVoice } from './sfx';
+
+export interface PlayOptions {
+  /** World position; omit for UI/player sounds that should play at full volume, centred. */
+  pos?: { x: number; z: number };
+  volume?: number;
+  /** Frequency multiplier, e.g. per-character voice pitch. */
+  pitch?: number;
+}
+
+/** Positional sounds beyond this distance (world units) are not played. */
+const HEARING_RANGE = 70;
 
 /**
  * All sound is synthesized with the Web Audio API: one-shot effects, a looping
- * engine voice for the player, and a sequenced medieval dance tune.
+ * engine voice for the player, looping drift/offroad/boost layers, per-course
+ * ambience, and a sequenced medieval dance tune. The sounds themselves live in sfx.ts.
  */
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -12,6 +25,13 @@ export class AudioEngine {
   private noiseBuf!: AudioBuffer;
   private engine: { osc1: OscillatorNode; osc2: OscillatorNode; filter: BiquadFilterNode; gain: GainNode } | null = null;
   private music: MusicSequencer | null = null;
+  private ambienceBus!: GainNode;
+  private ambience: Ambience | null = null;
+  private ambienceId: string | null = null;
+  private loops = new Map<string, { gain: GainNode; voice: LoopVoice }>();
+  private listener: { x: number; z: number; rx: number; rz: number } | null = null;
+  private lastPlayed = new Map<string, number>();
+  private warned = new Set<string>();
   muted = false;
 
   /** Must be called from a user gesture so the browser lets audio start. */
@@ -32,6 +52,9 @@ export class AudioEngine {
     this.musicBus = ctx.createGain();
     this.musicBus.gain.value = 0.32;
     this.musicBus.connect(this.master);
+    this.ambienceBus = ctx.createGain();
+    this.ambienceBus.gain.value = 0.6;
+    this.ambienceBus.connect(this.master);
     this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const data = this.noiseBuf.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
@@ -43,149 +66,130 @@ export class AudioEngine {
     return this.muted;
   }
 
-  // ---------- building blocks ----------
-
-  private tone(freq: number, dur: number, type: OscillatorType, vol: number, when = 0, slideTo?: number, bus?: AudioNode) {
-    const ctx = this.ctx;
-    if (!ctx) return;
-    const t = ctx.currentTime + when;
-    const osc = ctx.createOscillator();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t);
-    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    osc.connect(g).connect(bus ?? this.sfxBus);
-    osc.start(t);
-    osc.stop(t + dur + 0.05);
-  }
-
-  private noise(dur: number, vol: number, filterType: BiquadFilterType, freq: number, when = 0, freqTo?: number) {
-    const ctx = this.ctx;
-    if (!ctx) return;
-    const t = ctx.currentTime + when;
-    const src = ctx.createBufferSource();
-    src.buffer = this.noiseBuf;
-    src.loop = true;
-    const f = ctx.createBiquadFilter();
-    f.type = filterType;
-    f.frequency.setValueAtTime(freq, t);
-    if (freqTo) f.frequency.exponentialRampToValueAtTime(freqTo, t + dur);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    src.connect(f).connect(g).connect(this.sfxBus);
-    src.start(t, Math.random() * 0.5);
-    src.stop(t + dur + 0.05);
-  }
-
   // ---------- sound effects ----------
 
+  /**
+   * Plays a sound from the SOUNDS library in sfx.ts. With `pos`, the sound is
+   * attenuated and panned relative to the listener (see setListener) and skipped
+   * entirely when it is too far away to hear.
+   */
+  play(name: string, opts: PlayOptions = {}) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const fn = SOUNDS[name];
+    if (!fn) {
+      if (!this.warned.has(name)) console.warn(`[audio] unknown sound "${name}"`);
+      this.warned.add(name);
+      return;
+    }
+    // The same sound fired several times in one frame (e.g. a pile-up) is played once.
+    const now = ctx.currentTime;
+    if (now - (this.lastPlayed.get(name) ?? -1) < 0.03) return;
+    this.lastPlayed.set(name, now);
+
+    let vol = opts.volume ?? 1;
+    let pan = 0;
+    if (opts.pos && this.listener) {
+      const dx = opts.pos.x - this.listener.x;
+      const dz = opts.pos.z - this.listener.z;
+      const d = Math.hypot(dx, dz);
+      if (d > HEARING_RANGE) return;
+      vol *= Math.pow(1 - d / HEARING_RANGE, 1.6);
+      if (d > 1) pan = Math.max(-0.85, Math.min(0.85, (dx * this.listener.rx + dz * this.listener.rz) / d));
+    }
+    const g = ctx.createGain();
+    g.gain.value = vol;
+    const p = ctx.createStereoPanner();
+    p.pan.value = pan;
+    g.connect(p).connect(this.sfxBus);
+    fn(new Voice(ctx, g, this.noiseBuf, opts.pitch ?? 1));
+  }
+
+  /** Where positional sounds are heard from. `heading` uses the kart convention (forward = sin, cos). */
+  setListener(pos: { x: number; z: number }, heading: number) {
+    // Right vector for the kart heading convention.
+    this.listener = { x: pos.x, z: pos.z, rx: -Math.cos(heading), rz: Math.sin(heading) };
+  }
+
+  /** Fades a looping sound (see LOOPS in sfx.ts) to `level` (0 = silent). `param` is passed to the loop. */
+  setLoop(name: string, level: number, param = 0) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    let l = this.loops.get(name);
+    if (!l) {
+      if (level <= 0 || !LOOPS[name]) return;
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(this.sfxBus);
+      l = { gain, voice: LOOPS[name](ctx, gain, this.noiseBuf) };
+      this.loops.set(name, l);
+    }
+    l.gain.gain.setTargetAtTime(Math.max(0, level), ctx.currentTime, 0.06);
+    l.voice.set(param);
+  }
+
+  stopLoops() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    for (const l of this.loops.values()) {
+      l.gain.gain.setTargetAtTime(0, t, 0.05);
+      l.voice.stop(t + 0.4);
+    }
+    this.loops.clear();
+  }
+
+  /** Starts the background bed for an environment from AMBIENCES in sfx.ts, or silences it with null. */
+  setAmbience(id: string | null) {
+    if (!this.ctx || id === this.ambienceId) return;
+    this.ambience?.stop();
+    this.ambience = null;
+    this.ambienceId = id;
+    const build = id ? AMBIENCES[id] : undefined;
+    if (!build) return;
+    this.ambience = new Ambience(this.ctx, this.ambienceBus, this.noiseBuf);
+    build(this.ambience);
+  }
+
+  // Named shortcuts for the most common non-positional sounds.
   countdown(final: boolean) {
-    this.tone(final ? 880 : 440, final ? 0.6 : 0.25, 'square', 0.25);
-  }
-  pickup() {
-    [660, 830, 990, 1320].forEach((f, i) => this.tone(f, 0.12, 'triangle', 0.25, i * 0.05));
-  }
-  boost() {
-    this.noise(0.6, 0.35, 'bandpass', 600, 0, 3000);
-    this.tone(220, 0.5, 'sawtooth', 0.12, 0, 660);
-  }
-  throwItem() {
-    this.noise(0.25, 0.3, 'highpass', 2000, 0, 600);
-  }
-  dropItem() {
-    this.tone(300, 0.15, 'triangle', 0.25, 0, 150);
-  }
-  spinOut() {
-    for (let i = 0; i < 6; i++) this.tone(600 - i * 70, 0.1, 'square', 0.12, i * 0.07);
-    this.noise(0.3, 0.3, 'lowpass', 1200);
-  }
-  bump() {
-    this.tone(110, 0.15, 'sine', 0.5, 0, 50);
-    this.noise(0.08, 0.2, 'lowpass', 500);
+    this.play(final ? 'go' : 'countdown');
   }
   hop() {
-    this.tone(500, 0.08, 'square', 0.12, 0, 800);
+    this.play('hop');
   }
   driftTier(tier: number) {
-    this.tone(tier === 1 ? 1200 : 1600, 0.15, 'triangle', 0.18);
-    this.tone(tier === 1 ? 1800 : 2400, 0.15, 'triangle', 0.12, 0.06);
+    this.play(tier === 1 ? 'tier1' : 'tier2');
   }
-  explosion() {
-    this.noise(0.7, 0.6, 'lowpass', 2500, 0, 120);
-    this.tone(90, 0.5, 'sawtooth', 0.25, 0, 40);
+  boost() {
+    this.play('boost');
+  }
+  bump() {
+    this.play('bump');
+  }
+  spinOut() {
+    this.play('spin');
   }
   shieldBlock() {
-    this.tone(1500, 0.4, 'sine', 0.3);
-    this.tone(2250, 0.3, 'sine', 0.2, 0.02);
+    this.play('ward');
   }
   lap() {
-    [523, 659, 784].forEach((f, i) => this.tone(f, 0.2, 'square', 0.18, i * 0.1));
+    this.play('lap');
   }
   finalLap() {
-    [392, 523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.22, 'square', 0.18, i * 0.09));
+    this.play('finalLap');
   }
   finish(won: boolean) {
-    const notes = won ? [523, 659, 784, 1047, 784, 1047] : [392, 349, 330, 262];
-    notes.forEach((f, i) => this.tone(f, 0.3, 'square', 0.2, i * 0.16));
+    this.play(won ? 'win' : 'lose');
+    this.play('cheer', { volume: won ? 1 : 0.5 });
   }
   powerReady() {
-    this.tone(988, 0.12, 'triangle', 0.2);
-    this.tone(1319, 0.25, 'triangle', 0.2, 0.1);
-  }
-  power(id: string) {
-    switch (id) {
-      case 'rampage':
-        this.tone(70, 0.9, 'sawtooth', 0.4, 0, 140);
-        this.tone(73, 0.9, 'sawtooth', 0.3, 0, 120);
-        this.noise(0.8, 0.25, 'lowpass', 400);
-        break;
-      case 'blink':
-        for (let i = 0; i < 8; i++) this.tone(800 + i * 220, 0.12, 'sine', 0.15, i * 0.025);
-        this.noise(0.35, 0.15, 'highpass', 4000);
-        break;
-      case 'overclock':
-        for (let i = 0; i < 6; i++) this.tone(220 * Math.pow(1.26, i), 0.1, 'square', 0.14, i * 0.05);
-        break;
-      case 'mudBomb':
-        this.throwItem();
-        break;
-      case 'dragonBreath':
-        this.noise(0.9, 0.45, 'bandpass', 500, 0, 1800);
-        this.tone(110, 0.7, 'sawtooth', 0.25, 0, 55);
-        break;
-      case 'frostNova':
-        this.noise(0.6, 0.2, 'highpass', 6000, 0, 2000);
-        [1568, 1319, 1047, 784].forEach((f, i) => this.tone(f, 0.25, 'triangle', 0.14, i * 0.05));
-        break;
-      case 'phantom':
-        this.tone(330, 1.0, 'sine', 0.2, 0, 220);
-        this.tone(335, 1.0, 'sine', 0.2, 0.05, 210);
-        this.tone(660, 0.8, 'triangle', 0.08, 0.1, 440);
-        break;
-      case 'hexSwap':
-        [988, 1319, 988, 1568].forEach((f, i) => this.tone(f, 0.1, 'square', 0.12, i * 0.06));
-        this.noise(0.3, 0.15, 'highpass', 5000, 0.1);
-        break;
-    }
-  }
-  splat() {
-    this.noise(0.35, 0.5, 'lowpass', 900, 0, 200);
-    this.tone(160, 0.2, 'sine', 0.3, 0, 60);
-  }
-  oink() {
-    this.tone(520, 0.12, 'sawtooth', 0.15, 0, 300);
-    this.tone(480, 0.14, 'sawtooth', 0.15, 0.14, 260);
+    this.play('powerReady');
   }
   menuMove() {
-    this.tone(700, 0.06, 'square', 0.1);
+    this.play('menuMove');
   }
   menuSelect() {
-    this.tone(523, 0.1, 'square', 0.15);
-    this.tone(784, 0.15, 'square', 0.15, 0.08);
+    this.play('menuSelect');
   }
 
   // ---------- engine ----------
