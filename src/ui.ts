@@ -1,4 +1,5 @@
 import type { CharacterDef } from './characters';
+import type { CourseDef } from './courses/course';
 import { ITEM_INFO } from './items';
 import type { Kart } from './kart';
 import { TOTAL_LAPS } from './kart';
@@ -23,6 +24,31 @@ export function formatTime(t: number): string {
   return `${m}:${s.toFixed(2).padStart(5, '0')}`;
 }
 
+/** Small outline of a course's centreline for its select button. */
+function courseThumb(course: CourseDef): HTMLCanvasElement {
+  const c = el('canvas', 'thumb');
+  c.width = c.height = 64;
+  const pts = course.controlPoints;
+  const xs = pts.map((p) => p[0]);
+  const zs = pts.map((p) => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
+  const scale = 52 / Math.max(maxX - minX, maxZ - minZ);
+  const ctx = c.getContext('2d')!;
+  ctx.lineWidth = 5;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#f1e3c2';
+  ctx.beginPath();
+  pts.forEach(([x, z], i) => {
+    const px = 32 + (x - (minX + maxX) / 2) * scale;
+    const py = 32 + (z - (minZ + maxZ) / 2) * scale;
+    if (i) ctx.lineTo(px, py);
+    else ctx.moveTo(px, py);
+  });
+  ctx.closePath();
+  ctx.stroke();
+  return c;
+}
+
 const ordinal = (n: number) => `${n}<sup>${['th', 'st', 'nd', 'rd'][n] ?? 'th'}</sup>`;
 
 export class UI {
@@ -32,6 +58,7 @@ export class UI {
   readonly panel = el('div', 'layer panel hidden');
   private cards: HTMLButtonElement[] = [];
   private pills: HTMLButtonElement[] = [];
+  private courseBtns: HTMLButtonElement[] = [];
   private lapEl = el('div', 'lap');
   private timeEl = el('div', 'time');
   private placeEl = el('div', 'place');
@@ -53,7 +80,7 @@ export class UI {
   constructor(root: HTMLElement) {
     this.title.innerHTML = `
       <div class="logo">RACERIST</div>
-      <div class="subtitle">A medieval kart race for the fantasy realms</div>
+      <div class="subtitle">A kart race across the fantasy realms</div>
       <div class="subtitle blink">Click or press Enter to start</div>`;
 
     const tl = el('div', 'tl');
@@ -73,7 +100,14 @@ export class UI {
 
   // ---------- character select ----------
 
-  buildSelect(chars: CharacterDef[], onPick: (i: number) => void, onDifficulty: (i: number) => void, onGo: () => void) {
+  buildSelect(
+    chars: CharacterDef[],
+    courses: CourseDef[],
+    onPick: (i: number) => void,
+    onCourse: (i: number) => void,
+    onDifficulty: (i: number) => void,
+    onGo: () => void,
+  ) {
     this.select.innerHTML = '';
     this.select.append(el('h2', '', 'Choose your racer'));
     const cards = el('div', 'cards interactive');
@@ -94,6 +128,16 @@ export class UI {
       this.cards.push(card);
       cards.append(card);
     });
+    const courseRow = el('div', 'courses interactive');
+    courseRow.append(el('div', 'row-label', 'Course · ↑ ↓'));
+    this.courseBtns = courses.map((c, i) => {
+      const b = el('button', 'course', `<b>${c.name}</b><span>${c.tagline}</span>`);
+      b.append(courseThumb(c));
+      b.addEventListener('click', () => onCourse(i));
+      b.addEventListener('dblclick', onGo);
+      courseRow.append(b);
+      return b;
+    });
     const diff = el('div', 'difficulty interactive');
     DIFFICULTIES.forEach((d, i) => {
       const p = el('button', 'pill', d.name);
@@ -108,11 +152,12 @@ export class UI {
       'help',
       'Arrows/WASD drive · Space hop &amp; drift (hold, steer) · J item · K power · R look back · Esc pause<br>Gamepad: A gas · X brake · RB drift · LB item · Y power · ↓ look back · Press gas as the "2" fades for a start boost',
     );
-    this.select.append(cards, diff, go, help);
+    this.select.append(cards, courseRow, diff, go, help);
   }
 
-  setSelected(i: number, difficulty: number) {
+  setSelected(i: number, difficulty: number, course: number) {
     this.cards.forEach((c, k) => c.classList.toggle('active', k === i));
+    this.courseBtns.forEach((b, k) => b.classList.toggle('active', k === course));
     this.pills.forEach((p, k) => p.classList.toggle('active', k === difficulty));
   }
 

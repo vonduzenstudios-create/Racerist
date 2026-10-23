@@ -291,7 +291,7 @@ export class Kart {
     }
 
     // Vertical: follow the road, launch off the ramp lip, fall back down.
-    const ground = Math.abs(this.lateral) < ROAD_HALF + 0.5 ? track.heightAt(this.s) : 0;
+    const ground = track.groundAt(this.s, this.lateral);
     this.groundY = ground;
     if (this.grounded) {
       if (ground < this.pos.y - 0.4) {

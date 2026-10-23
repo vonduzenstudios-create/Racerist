@@ -202,13 +202,13 @@ export function itemBoxTexture(): THREE.CanvasTexture {
   return toTexture(c, false);
 }
 
-export function skyTexture(): THREE.CanvasTexture {
+/** Vertical sky gradient from the zenith (first stop) down to the horizon (last stop). */
+export function skyTexture(stops: string[]): THREE.CanvasTexture {
   const [c, ctx] = canvas(4, 256);
   const g = ctx.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0, '#3a8fd9');
-  g.addColorStop(0.55, '#9fd3f5');
-  g.addColorStop(0.8, '#ffe2b8');
-  g.addColorStop(1, '#ffd29a');
+  // Stops bunch toward the horizon, which is where most of the visible sky is.
+  const at = [0, 0.55, 0.8, 1];
+  stops.forEach((col, i) => g.addColorStop(stops.length === 4 ? at[i] : i / (stops.length - 1), col));
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 4, 256);
   return toTexture(c, false);

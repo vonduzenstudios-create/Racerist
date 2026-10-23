@@ -77,7 +77,7 @@ export class ItemSystem {
   private tmp = new THREE.Vector3();
 
   constructor(
-    private scene: THREE.Scene,
+    private scene: THREE.Object3D,
     private track: Track,
     private particles: Particles,
     private sfx: SfxFn,
@@ -235,8 +235,8 @@ export class ItemSystem {
       b.vel.y -= 28 * dt;
       b.mesh.position.addScaledVector(b.vel, dt);
       b.mesh.rotation.x += dt * 6;
-      if (b.mesh.position.y <= 0.2) {
-        const proj = this.track.project(b.mesh.position);
+      const proj = this.track.project(b.mesh.position);
+      if (b.mesh.position.y <= this.track.groundAt(proj.s, proj.lateral) + 0.2) {
         const mesh = new THREE.Mesh(new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2), this.mudMat);
         this.track.pointAt(proj.s, Math.max(-9, Math.min(9, proj.lateral)), mesh.position);
         mesh.position.y += 0.07;
