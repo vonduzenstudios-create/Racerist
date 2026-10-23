@@ -127,6 +127,18 @@ export class AiDriver {
         case 'mudBomb':
           use ||= gapAhead < 45 && gapAhead > 8;
           break;
+        case 'dragonBreath':
+          use ||= gapAhead < 20 && gapAhead > 4;
+          break;
+        case 'frostNova':
+          use ||= karts.filter((o) => o !== k && o.pos.distanceTo(k.pos) < 16).length >= 2 || gapAhead < 10;
+          break;
+        case 'hexSwap':
+          use ||= gapAhead > 25 && gapAhead < 85;
+          break;
+        case 'phantom':
+          use ||= gapAhead < 12 || !!obstacle;
+          break;
         case 'blink':
         case 'overclock':
           use ||= straight && this.powerHeldFor > 1;

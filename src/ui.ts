@@ -107,7 +107,7 @@ export class UI {
     const help = el(
       'div',
       'help',
-      'Arrows/WASD drive · Space hop &amp; drift (hold, steer) · J item · K power · R look back · Esc pause<br>Gamepad: A gas · X brake · RB drift · LB item · Y power · ↓ look back · Press gas as the "2" fades for a start boost',
+      'Arrows/WASD drive · Space/Shift hop &amp; drift (hold, steer) · J/X/Ctrl item · K power · R look back · Esc pause<br>Gamepad: A gas · B or X item · bumpers/triggers hop &amp; drift · Y power · stick back brake · stick click look back · Press gas as the "2" fades for a start boost',
     );
     this.select.append(cards, diff, go, help);
   }

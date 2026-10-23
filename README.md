@@ -7,11 +7,15 @@ A browser kart racer tech demo set in a medieval city. Every model, texture, sou
 ## What's in the demo
 
 - **One course:** a three-lap circuit through a half-timbered medieval town, under a castle gatehouse, over a wooden jump ramp, past market stalls, with the castle on the hill and the city walls on the horizon.
-- **Four racers**, each with different stats and a special power that charges over time:
+- **Eight racers** (all eight start every race), each with different stats and a special power that charges over time:
   - **Dark Orc:** heavy and fast. *Rampage* makes it faster, immune to hazards, and spins out anyone it rams.
   - **Light Elf:** light, with the best handling. *Blink* teleports it 35 metres up the road.
   - **Robot:** balanced. *Overclock* gives a long boost that ignores rough ground.
   - **Dirty Dwarf:** the best acceleration. *Mud Bomb* lobs mud ahead that leaves a slowing puddle.
+  - **Ember Drake:** heavy hitter with weak handling. *Dragon Breath* spins out every racer in a cone of fire ahead.
+  - **Frost Troll:** top speed but the slowest start. *Frost Nova* freezes nearby racers to half speed.
+  - **Bone Knight:** quick and light. *Phantom Ride* turns it ghostly, passing through racers, hazards and attacks.
+  - **Pixie:** tiny, with the best acceleration and handling. *Hex Swap* trades places with the racer just ahead (within 90 m).
 - **Items** from the ? boxes, weighted by your place: Haste Potion (boost), Rotten Cabbage (dropped trap), Fireball (homes in on the racer ahead), Magic Ward (blocks one hit).
 - **Driving:** hop-drift with two boost tiers (blue then orange sparks), a start boost, jumps, wall glancing, and slow cobbled verges.
 - **Hazards:** peasants carrying hay, bread and kegs, plus pigs, wander across the market crossings.
@@ -22,15 +26,17 @@ A browser kart racer tech demo set in a medieval city. Every model, texture, sou
 
 | Action | Keyboard | Gamepad |
 | --- | --- | --- |
-| Accelerate | W / Up | A or RT |
-| Brake / reverse | S / Down | X or LT |
+| Accelerate | W / Up | A |
+| Brake / reverse | S / Down | Left stick back or d-pad down |
 | Steer | A D / Left Right | Left stick or d-pad |
-| Hop and drift (hold while steering) | Space or Shift | RB or B |
-| Use item | J or X | LB |
+| Hop and drift (hold while steering) | Space or Shift | Any bumper or trigger (LB, RB, LT, RT) |
+| Use item | J, X or Ctrl | B or X |
 | Use power | K or E | Y |
-| Look back | R or Q | D-pad down |
+| Look back | R or Q | Stick click or Back/View |
 | Pause | Esc or P | Start |
 | Mute | M | |
+
+Items can be fired while holding accelerate (A sits next to B and X; on keyboard J, X and Ctrl are away from the arrow keys).
 
 For a start boost, press accelerate as the "2" fades. Press it too early and the engine floods.
 

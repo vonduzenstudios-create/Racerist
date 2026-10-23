@@ -41,6 +41,8 @@ export class Track {
   readonly length: number;
   readonly spacing: number;
   readonly group = new THREE.Group();
+  /** Background sound bed, an id from AMBIENCES in sfx.ts. */
+  readonly ambience: string = 'city';
 
   // Distances along the track where features sit.
   readonly rampStart: number;

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type PowerId = 'rampage' | 'blink' | 'overclock' | 'mudBomb';
+export type PowerId = 'rampage' | 'blink' | 'overclock' | 'mudBomb' | 'dragonBreath' | 'frostNova' | 'phantom' | 'hexSwap';
 
 export interface CharacterDef {
   id: string;
@@ -190,6 +190,172 @@ function buildDwarf(): THREE.Group {
   return g;
 }
 
+function buildDrake(): THREE.Group {
+  const g = chassis(0x7a1f12, 0xf0a020);
+  const scales = lambert(0xc4421c);
+  const belly = lambert(0xf2b45a);
+  const horn = lambert(0x2a1a14);
+  const ember = new THREE.MeshBasicMaterial({ color: 0xffb020 });
+  driverBody(g, scales, scales, 1.05);
+  g.add(mesh(new THREE.BoxGeometry(0.5, 0.55, 0.1), belly, 0, 1.2, 0.14));
+  const head = new THREE.Group();
+  head.add(mesh(new THREE.BoxGeometry(0.62, 0.55, 0.62), scales));
+  head.add(mesh(new THREE.BoxGeometry(0.48, 0.32, 0.5), scales, 0, -0.1, 0.5)); // snout
+  head.add(mesh(new THREE.BoxGeometry(0.4, 0.1, 0.45), belly, 0, -0.27, 0.48)); // jaw
+  for (const x of [-1, 1]) {
+    head.add(mesh(new THREE.BoxGeometry(0.12, 0.08, 0.05), ember, x * 0.18, 0.1, 0.32));
+    head.add(mesh(new THREE.SphereGeometry(0.04, 4, 3), horn, x * 0.1, -0.02, 0.76)); // nostrils
+    const h = mesh(new THREE.ConeGeometry(0.09, 0.55, 5), horn, x * 0.22, 0.42, -0.2);
+    h.rotation.x = -0.8;
+    head.add(h);
+  }
+  // Ridge of spines down the back of the head.
+  for (let k = 0; k < 3; k++) head.add(mesh(new THREE.ConeGeometry(0.07, 0.22, 4), belly, 0, 0.32 - k * 0.1, -0.1 - k * 0.15));
+  head.position.set(0, 1.95, -0.15);
+  g.add(head);
+  // Bat wings folded behind the seat.
+  for (const x of [-1, 1]) {
+    const wing = new THREE.Group();
+    wing.add(mesh(new THREE.BoxGeometry(0.08, 0.08, 1.1), horn, 0, 0.5, -0.3));
+    const membrane = mesh(new THREE.ConeGeometry(0.6, 1.2, 3).rotateX(Math.PI / 2), lambert(0x9a2a18, { side: THREE.DoubleSide }), 0, 0.15, -0.3);
+    membrane.scale.x = 0.15;
+    wing.add(membrane);
+    wing.position.set(x * 0.55, 1.2, -0.4);
+    wing.rotation.z = x * 0.5;
+    g.add(wing);
+  }
+  // Tail curling off the back of the kart.
+  for (let k = 0; k < 4; k++) g.add(mesh(new THREE.BoxGeometry(0.22 - k * 0.04, 0.22 - k * 0.04, 0.4), scales, 0, 0.75 + k * 0.08, -1.6 - k * 0.32));
+  g.add(mesh(new THREE.ConeGeometry(0.15, 0.3, 4).rotateX(-Math.PI / 2), horn, 0, 1.05, -2.95));
+  // Glowing exhaust embers.
+  for (const x of [-0.36, 0.36]) g.add(mesh(new THREE.SphereGeometry(0.1, 5, 3), ember, x, 0.6, -1.8));
+  return g;
+}
+
+function buildTroll(): THREE.Group {
+  const g = chassis(0x9fc4dc, 0x3c5a78);
+  const skin = lambert(0x7fa6b8);
+  const fur = lambert(0xe9eef2);
+  const ice = new THREE.MeshLambertMaterial({ color: 0xbfeaff, flatShading: true, transparent: true, opacity: 0.85 });
+  driverBody(g, fur, skin, 1.35);
+  const head = new THREE.Group();
+  head.add(mesh(new THREE.BoxGeometry(0.85, 0.7, 0.7), skin));
+  head.add(mesh(new THREE.BoxGeometry(0.9, 0.2, 0.3), skin, 0, 0.25, 0.25)); // heavy brow
+  head.add(mesh(new THREE.SphereGeometry(0.17, 5, 4), lambert(0x6a93a6), 0, -0.02, 0.4)); // nose
+  head.add(mesh(new THREE.BoxGeometry(0.95, 0.35, 0.5), fur, 0, -0.35, 0.05)); // frosty beard
+  for (const x of [-1, 1]) {
+    head.add(mesh(new THREE.BoxGeometry(0.12, 0.07, 0.05), new THREE.MeshBasicMaterial({ color: 0x9ff4ff }), x * 0.2, 0.1, 0.36));
+    head.add(mesh(new THREE.ConeGeometry(0.06, 0.25, 4), lambert(0xf2f2e8), x * 0.22, -0.22, 0.36)); // tusks
+    head.add(mesh(new THREE.BoxGeometry(0.15, 0.3, 0.12), skin, x * 0.48, 0.05, 0)); // ears
+  }
+  // Icicle crown.
+  for (let k = 0; k < 5; k++) head.add(mesh(new THREE.ConeGeometry(0.07, 0.3 + (k % 2) * 0.2, 4), ice, (k - 2) * 0.17, 0.48 + (k % 2) * 0.1, 0));
+  head.position.set(0, 2.0, -0.15);
+  g.add(head);
+  for (const x of [-0.7, 0.7]) g.add(mesh(new THREE.SphereGeometry(0.32, 6, 4), fur, x, 1.55, -0.15)); // fur shoulders
+  // Ice crystals frozen to the kart.
+  for (const [x, y, z, r] of [[0.7, 0.9, 1.4, 0.25], [-0.75, 0.95, 0.9, 0.2], [0.8, 0.9, -1.1, 0.3], [-0.6, 0.9, -1.4, 0.22]]) {
+    const c = mesh(new THREE.OctahedronGeometry(r), ice, x, y, z);
+    c.scale.y = 1.8;
+    g.add(c);
+  }
+  // A club made of a frozen log.
+  const club = mesh(new THREE.CylinderGeometry(0.18, 0.1, 1.3, 6), lambert(0x6b5a48), 0.55, 1.45, -0.8);
+  club.rotation.z = -0.5;
+  g.add(club);
+  return g;
+}
+
+function buildSkeleton(): THREE.Group {
+  const g = chassis(0x2a2238, 0x6b4f9c);
+  const bone = lambert(0xe8e0c8);
+  const cloth = lambert(0x3b2f52);
+  const iron = lambert(0x5a5a66);
+  const soulfire = new THREE.MeshBasicMaterial({ color: 0x7dffb0 });
+  // Rib cage instead of a torso.
+  g.add(mesh(new THREE.BoxGeometry(0.12, 0.75, 0.12), bone, 0, 1.2, -0.15)); // spine
+  for (let k = 0; k < 4; k++) g.add(mesh(new THREE.BoxGeometry(0.65 - k * 0.06, 0.07, 0.4), bone, 0, 1.45 - k * 0.15, -0.1));
+  for (const x of [-0.38, 0.38]) {
+    const arm = mesh(new THREE.BoxGeometry(0.1, 0.1, 0.75), bone, x, 1.25, 0.2);
+    arm.rotation.x = 0.3;
+    g.add(arm);
+    g.add(mesh(new THREE.BoxGeometry(0.16, 0.12, 0.16), bone, x * 0.7, 1.08, 0.55));
+  }
+  // Tattered cape.
+  g.add(mesh(new THREE.BoxGeometry(0.8, 0.9, 0.08), cloth, 0, 1.2, -0.5));
+  const head = new THREE.Group();
+  head.add(mesh(new THREE.BoxGeometry(0.55, 0.5, 0.55), bone));
+  head.add(mesh(new THREE.BoxGeometry(0.42, 0.18, 0.4), bone, 0, -0.3, 0.06)); // jaw
+  for (const x of [-1, 1]) {
+    head.add(mesh(new THREE.BoxGeometry(0.15, 0.13, 0.05), lambert(0x111111), x * 0.13, 0.02, 0.27));
+    head.add(mesh(new THREE.SphereGeometry(0.05, 4, 3), soulfire, x * 0.13, 0.02, 0.3)); // glowing eyes
+  }
+  for (let k = 0; k < 4; k++) head.add(mesh(new THREE.BoxGeometry(0.06, 0.06, 0.03), bone, (k - 1.5) * 0.08, -0.2, 0.27)); // teeth
+  // Battered knight's helm with a plume.
+  head.add(mesh(new THREE.CylinderGeometry(0.34, 0.36, 0.25, 8), iron, 0, 0.32, 0));
+  head.add(mesh(new THREE.BoxGeometry(0.1, 0.25, 0.55), lambert(0x8a2a4a), 0, 0.55, -0.05));
+  head.position.set(0, 1.9, -0.15);
+  g.add(head);
+  // Ghostly lanterns on the spoiler.
+  for (const x of [-0.9, 0.9]) {
+    g.add(mesh(new THREE.BoxGeometry(0.2, 0.25, 0.2), iron, x, 1.45, -1.35));
+    g.add(mesh(new THREE.SphereGeometry(0.08, 5, 3), soulfire, x, 1.45, -1.35));
+  }
+  // Bone spikes along the sides.
+  for (const z of [-0.6, 0.2, 1.0]) {
+    for (const x of [-1, 1]) {
+      const sp = mesh(new THREE.ConeGeometry(0.06, 0.4, 4), bone, x * 0.95, 0.75, z);
+      sp.rotation.z = -x * 1.2;
+      g.add(sp);
+    }
+  }
+  return g;
+}
+
+function buildPixie(): THREE.Group {
+  const g = chassis(0xd77fd0, 0x7be0c4);
+  const skin = lambert(0xc8f0d0);
+  const petal = lambert(0xff9ad6);
+  const hair = lambert(0x8a5cf0);
+  const sparkle = new THREE.MeshBasicMaterial({ color: 0xfff6a8 });
+  const wingMat = new THREE.MeshBasicMaterial({ color: 0xbff8ff, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
+  driverBody(g, petal, skin, 0.7);
+  const head = new THREE.Group();
+  head.add(mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), skin));
+  head.add(mesh(new THREE.BoxGeometry(0.56, 0.22, 0.56), hair, 0, 0.27, -0.02));
+  head.add(mesh(new THREE.ConeGeometry(0.2, 0.6, 5), hair, 0, 0.6, -0.1)); // spiky tuft
+  for (const x of [-1, 1]) {
+    head.add(mesh(new THREE.BoxGeometry(0.12, 0.12, 0.05), lambert(0x2a1a4a), x * 0.12, 0.03, 0.26)); // big eyes
+    const ear = mesh(new THREE.ConeGeometry(0.06, 0.35, 4), skin, x * 0.32, 0.12, -0.02);
+    ear.rotation.z = -x * 1.0;
+    head.add(ear);
+    // Antennae with glowing tips.
+    const ant = mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 3), hair, x * 0.12, 0.55, 0.1);
+    ant.rotation.z = -x * 0.4;
+    head.add(ant);
+    head.add(mesh(new THREE.SphereGeometry(0.05, 5, 3), sparkle, x * 0.21, 0.74, 0.1));
+  }
+  head.position.set(0, 1.8, -0.15);
+  g.add(head);
+  // Two pairs of dragonfly wings.
+  for (const x of [-1, 1]) {
+    for (const [y, tilt, len] of [[1.6, 0.35, 1.2], [1.25, -0.25, 0.9]]) {
+      const w = mesh(new THREE.CircleGeometry(0.5, 8), wingMat, x * (0.35 + len * 0.45), y, -0.55);
+      w.scale.set(len, 0.35, 1);
+      w.rotation.set(0, x * 0.4, x * tilt);
+      g.add(w);
+    }
+  }
+  // A mushroom cap on the spoiler and flower petals on the nose.
+  g.add(mesh(new THREE.SphereGeometry(0.45, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), lambert(0xe03c3c), 0, 1.3, -1.35));
+  for (let k = 0; k < 5; k++) {
+    const a = (k / 5) * Math.PI * 2;
+    g.add(mesh(new THREE.SphereGeometry(0.16, 5, 3), petal, Math.cos(a) * 0.25, 0.75, 1.75 + Math.sin(a) * 0.25));
+  }
+  g.add(mesh(new THREE.SphereGeometry(0.12, 5, 3), sparkle, 0, 0.8, 1.75));
+  return g;
+}
+
 export const CHARACTERS: CharacterDef[] = [
   {
     id: 'orc',
@@ -226,5 +392,41 @@ export const CHARACTERS: CharacterDef[] = [
     stats: { speed: 3, accel: 5, handling: 3, weight: 4 },
     power: { id: 'mudBomb', name: 'Mud Bomb', description: 'Hurls a bomb of mud ahead that leaves a sticky puddle for everyone else.' },
     build: buildDwarf,
+  },
+  {
+    id: 'drake',
+    name: 'Ember Drake',
+    tagline: 'Hot-headed, hard-hitting, slow to turn.',
+    color: '#ff6a1a',
+    stats: { speed: 4, accel: 3, handling: 2, weight: 4 },
+    power: { id: 'dragonBreath', name: 'Dragon Breath', description: 'Roars a cone of fire down the road that spins out every racer in front.' },
+    build: buildDrake,
+  },
+  {
+    id: 'troll',
+    name: 'Frost Troll',
+    tagline: 'A glacier on wheels. Hard to stop once moving.',
+    color: '#7fd8ff',
+    stats: { speed: 5, accel: 1, handling: 3, weight: 5 },
+    power: { id: 'frostNova', name: 'Frost Nova', description: 'Blasts out a ring of ice that freezes nearby racers to a crawl.' },
+    build: buildTroll,
+  },
+  {
+    id: 'skeleton',
+    name: 'Bone Knight',
+    tagline: 'Rattles along on pure stubbornness.',
+    color: '#7dffb0',
+    stats: { speed: 4, accel: 4, handling: 3, weight: 2 },
+    power: { id: 'phantom', name: 'Phantom Ride', description: 'Turns ghostly: passes through racers, hazards, and attacks, and speeds up a little.' },
+    build: buildSkeleton,
+  },
+  {
+    id: 'pixie',
+    name: 'Pixie',
+    tagline: 'Tiny, twitchy, and full of tricks.',
+    color: '#ff9ad6',
+    stats: { speed: 2, accel: 5, handling: 5, weight: 1 },
+    power: { id: 'hexSwap', name: 'Hex Swap', description: 'Swaps places with the racer just ahead, if they are within 90 metres.' },
+    build: buildPixie,
   },
 ];

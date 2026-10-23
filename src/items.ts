@@ -81,6 +81,7 @@ interface Seeker {
   target: Kart | null;
   life: number;
   homing: boolean;
+  alarm: number;
 }
 
 interface Cannonball {
@@ -161,11 +162,12 @@ export class ItemSystem {
     switch (item) {
       case 'potion':
         kart.boost(1.5);
+        this.sfx('potion', kart.pos);
         this.particles.burst(kart.pos.clone().setY(kart.pos.y + 1), 0x7dff9a, 20, 6, { life: 0.5, size: 0.6 });
         break;
       case 'ward':
         kart.shieldTime = 12;
-        this.sfx('ward', kart.pos);
+        this.sfx('wardUp', kart.pos);
         break;
       case 'cabbage': {
         const mesh = makeCabbage();
@@ -204,8 +206,8 @@ export class ItemSystem {
         const target = live[0] ?? null;
         const mesh = makeSeeker();
         this.scene.add(mesh);
-        this.seekers.push({ mesh, s: kart.s + 3, lateral: kart.lateral, owner: kart, target, life: 30, homing: false });
-        this.sfx('seeker', kart.pos);
+        this.seekers.push({ mesh, s: kart.s + 3, lateral: kart.lateral, owner: kart, target, life: 30, homing: false, alarm: 0 });
+        this.sfx('shellLaunch', kart.pos);
         if (target) this.hooks.toast(target, 'A Crown Seeker hunts you!');
         break;
       }
@@ -215,21 +217,21 @@ export class ItemSystem {
       case 'heart':
         kart.starTime = 7;
         kart.spinTime = 0;
-        this.sfx('heart', kart.pos);
+        this.sfx('star', kart.pos);
         break;
       case 'feather':
         kart.featherTime = 3.5;
         kart.spinTime = 0;
         kart.drifting = false;
         this.particles.burst(kart.pos.clone().setY(kart.pos.y + 1), 0xff7a1a, 40, 10, { life: 0.6, size: 0.9 });
-        this.sfx('feather', kart.pos);
+        this.sfx('bullet', kart.pos);
         break;
     }
   }
 
   private useWraith(kart: Kart, karts: Kart[]) {
     kart.ghostTime = 6;
-    this.sfx('wraith', kart.pos);
+    this.sfx('ghost', kart.pos);
     this.particles.burst(kart.pos.clone().setY(kart.pos.y + 1), 0xc8d8ff, 30, 6, { life: 0.8, size: 0.9 });
     // Steal from the nearest rival ahead that holds something, or anyone if nobody ahead does.
     const holders = karts.filter((k) => k !== kart && k.item && k.rouletteTime <= 0 && !k.finished);
@@ -252,6 +254,8 @@ export class ItemSystem {
     for (const k of karts) {
       if (k === kart || k.finished) continue;
       this.spawnBolt(k.pos);
+      this.sfx('lightning', k.pos);
+      this.sfx('thunder', k.pos);
       anyone = k.pos;
       const safe = k.invulnerable || k.shieldTime > 0;
       k.hit();
@@ -263,7 +267,7 @@ export class ItemSystem {
       k.rouletteTime = 0;
     }
     this.hooks.flash();
-    this.sfx('thunder', anyone ?? kart.pos);
+    if (anyone) this.sfx('shrink', anyone);
   }
 
   private spawnBolt(at: THREE.Vector3) {
@@ -304,7 +308,7 @@ export class ItemSystem {
           if (!k.item) {
             k.item = rollItem(k.place, karts.length);
             k.rouletteTime = 1.1;
-            if (k.isPlayer) this.sfx('pickup', k.pos);
+            this.sfx(k.isPlayer ? 'pickup' : 'boxBreak', k.pos);
           }
           break;
         }
@@ -511,6 +515,12 @@ export class ItemSystem {
       if (f.target && !f.homing) {
         let gap = f.target.s - f.s;
         if (gap < -this.track.length / 2) gap += this.track.length;
+        // Sound the alarm around the leader as it closes in.
+        f.alarm -= dt;
+        if (gap < 120 && f.alarm <= 0) {
+          this.sfx('shellAlarm', f.target.pos);
+          f.alarm = 0.6;
+        }
         if (gap < 14 && gap > -4) f.homing = true;
       }
       if (f.homing && f.target) {
@@ -536,7 +546,7 @@ export class ItemSystem {
       }
       this.particles.burst(at, 0x4fa8ff, 50, 16, { life: 0.8, size: 1.5 });
       this.particles.burst(at, 0xffffff, 20, 10, { life: 0.5, size: 1.0 });
-      this.sfx('blast', at);
+      this.sfx('bigExplosion', at);
       this.scene.remove(f.mesh);
       this.seekers.splice(i, 1);
     }
