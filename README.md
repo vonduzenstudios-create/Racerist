@@ -22,15 +22,17 @@ A browser kart racer tech demo set in a medieval city. Every model, texture, sou
 
 | Action | Keyboard | Gamepad |
 | --- | --- | --- |
-| Accelerate | W / Up | A or RT |
-| Brake / reverse | S / Down | X or LT |
+| Accelerate | W / Up | A |
+| Brake / reverse | S / Down | Left stick back or d-pad down |
 | Steer | A D / Left Right | Left stick or d-pad |
-| Hop and drift (hold while steering) | Space or Shift | RB or B |
-| Use item | J or X | LB |
+| Hop and drift (hold while steering) | Space or Shift | Any bumper or trigger (LB, RB, LT, RT) |
+| Use item | J, X or Ctrl | B or X |
 | Use power | K or E | Y |
-| Look back | R or Q | D-pad down |
+| Look back | R or Q | Stick click or Back/View |
 | Pause | Esc or P | Start |
 | Mute | M | |
+
+Items can be fired while holding accelerate (A sits next to B and X; on keyboard J, X and Ctrl are away from the arrow keys).
 
 For a start boost, press accelerate as the "2" fades. Press it too early and the engine floods.
 
